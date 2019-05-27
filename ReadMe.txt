@@ -7,14 +7,15 @@
 ***********************************************************************
 
 Wayne Warthen (wwarthen@gmail.com)
-Version 2.9.1-pre.13, 2019-05-08
+Version 2.9.1-pre.16, 2019-05-25
 https://www.retrobrewcomputers.org/
 
 RomWBW is a ROM-based implementation of CP/M-80 2.2 and Z-System for 
 all RetroBrew Computers Z80/Z180 hardware platforms including SBC 
-1/2, Zeta 1/2, N8, Mark IV, and RC2014. Virtually all RetroBrew 
-hardware is supported including floppy, hard disk (IDE, CF Card, SD 
-Card), Video, and keyboard. VT-100 terminal emulation is built-in.
+1/2, Zeta 1/2, N8, Mark IV, RC2014, and Easy Z80. Virtually all 
+RetroBrew hardware is supported including floppy, hard disk (IDE, CF 
+Card, SD Card), Video, and keyboard. VT-100 terminal emulation is 
+built-in.
 
 The RomWBW ROM loads and runs the built-in operating systems directly
 from the ROM and includes a selection of standard/useful applications
@@ -43,12 +44,20 @@ ROM of your system with the appropriate ROM image. Please see the
 RomList.txt file in the Binary directory for details on selecting the 
 correct ROM image for your system and platform specific information.
 
+=================================================================
+=== It is critical that you pick the right ROM image for your ===
+=== system.  Please be sure to review the RomList.txt file to ===
+=== ensure you pick the right one.                            ===
+=================================================================
+
 Connect a serial terminal or computer with terminal emulation 
 software to the primary RS-232 port of your CPU board.  A null-modem 
 connection is generally required.  Set the line characteristics to 
 38400 baud, 8 data bits, 1 stop bit, no parity, and no flow control. 
-Select VT-100 terminal emulation.  In the case of the RC2014, the
-baud rate is determined by hardware, but is normally 115200 baud.
+Select VT-100 terminal emulation.  In the case of the RC2014 with a 
+Z80 CPU or Easy Z80, the baud rate is determined by hardware, but is 
+normally 115200 baud.  RC2014 with a Z180 CPU defaults to the 
+built-in Z180 serial ports and will run at 38400 baud.
 
 Upon power-up, your terminal should display a sign-on banner within 2 
 seconds followed by hardware inventory and discovery information.  
@@ -136,8 +145,10 @@ few things that UNA does not support:
 
     - Floppy Drives
     - Video/Keyboard/Terminal Emulation
-    - Zeta 1 and N8 Systems
+    - Zeta 1 and N8 systems
     - Some older support boards
+    - RC2014 systems
+    - Easy Z80 systems
 
 If you wish to try the UNA variant of RomWBW, then just program your
 ROM with the ROM image called "UNA_std.rom" in the Binary directory.
@@ -194,7 +205,7 @@ UNA customization is performed within the ROM setup script.
 Complete documentation of the customization process is found in the
 ReadMe.txt file in the Source directory.
 
-Inbuild ROM Applications
+Inbuilt ROM Applications
 ------------------------
 
 Additonal software other than the CP/M and Z-System application can
@@ -209,8 +220,9 @@ Current inclusions are:
 	
 	Note: To exit type B in Monitor and BYE in other applications.
 	
-Space is available in the ROM image for the inclusion of other software.
-Any inbuild application can be set up to launch automatically at startup.
+Space is available in the ROM image for the inclusion of other 
+software. Any inbuild application can be set up to launch 
+automatically at startup.
 
 Source Code Respository
 -----------------------
@@ -271,8 +283,8 @@ RetroBrew Computers projects is via the community forum at
 
 Also feel free to email Wayne Warthen at wwarthen@gmail.com.
 
-To Do
------
+Documentation To Do
+-------------------
 
     - Formatting Media
     - Making a Disk Bootable
