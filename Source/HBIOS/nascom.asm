@@ -19,13 +19,23 @@
 ; Adapted for the freeware Zilog Macro Assembler 2.10 to produce
 ; the original ROM code (checksum A934H). PA
 ;
-; SBC V2 BOOTROM VERSION 27/10/2018 
-; difficultylevelhigh@gmail.com
+;==================================================================================
+; SBC V2 BOOTROM VERSION
+; 
+; 20181027 - Initial retrobrewcomputer SBC V2 version - difficultylevelhigh@gmail.com
+; 20191012 - Add PLAY command for SBC-V2-004 Sound support.
+; 20191013 - Add option for long error messages.
+;	   - Add option to use VT100 escape codes for screen controls.
 ;
 #INCLUDE "std.asm"
 ;
+; CUSTOMIZATION
+;
+ABBRERR	.EQU	FALSE		; Choose between long error message and abbreviated error messages.
+VT100	.EQU	TRUE		; Use VT100 escape codes for CLS
+;
 ; GENERAL EQUATES
-
+;
 CTRLC   .EQU    03H             ; Control "C"
 CTRLG   .EQU    07H             ; Control "G"
 BKSP    .EQU    08H             ; Back space
@@ -33,14 +43,20 @@ LF      .EQU    0AH             ; Line feed
 CS      .EQU    0CH             ; Clear screen
 CR      .EQU    0DH             ; Carriage return
 CTRLO   .EQU    0FH             ; Control "O"
-CTRLQ	.EQU	11H		        ; Control "Q"
+CTRLQ	.EQU	11H		; Control "Q"
 CTRLR   .EQU    12H             ; Control "R"
 CTRLS   .EQU    13H             ; Control "S"
 CTRLU   .EQU    15H             ; Control "U"
 ESC     .EQU    1BH             ; Escape
 DEL     .EQU    7FH             ; Delete
 
+;
 ; BASIC WORK SPACE LOCATIONS
+;
+; 0200H - 2000H	BASIC EXECUTABLE
+; 2000H - 2090H STACK
+; 2090H - 20F8H BASIC EXECUTABLE VARAIABLES / WORKSPACE
+; 20F9H -       BASIC PROGRAM START
 
 WRKSPC  .EQU    BAS_END+90H			; WAS 4090H             ; BASIC Work space
 USR     .EQU    WRKSPC+3H           ; "USR (x)" jump
@@ -132,7 +148,7 @@ MO      .EQU    24H             ; Missing operand
 HX      .EQU    26H             ; HEX error
 BN      .EQU    28H             ; BIN error
 
-        .ORG    BAS_LOC			; WAS 02000H
+        .ORG    BAS_LOC		; WAS 02000H
 
 COLD:	JP      STARTB          ; Jump for cold start
 WARM:   JP      WARMST          ; Jump for warm start
@@ -173,8 +189,8 @@ MSIZE:  LD      HL,MEMMSG       ; Point to message
 MLOOP:  INC     HL              ; Next byte
 ;        LD      A,H             ; Above address FFFF ?
 ;        OR      L
-		LD		A,H				; Memory top set below HBIOS Proxy @ FE00 
-		CP		$FD
+	LD	A,H		; Memory top set below HBIOS Proxy @ FE00 
+	CP	$FD
         JP      Z,SETTOP        ; Yes - 64K RAM
         LD      A,(HL)          ; Get contents
         LD      B,A             ; Save it
@@ -269,43 +285,43 @@ FNCTAB: .WORD   SGN
 
 ; RESERVED WORD LIST
 
-WORDS:  .BYTE   'E'+80H,"ND"
-        .BYTE   'F'+80H,"OR"
-        .BYTE   'N'+80H,"EXT"
-        .BYTE   'D'+80H,"ATA"
-        .BYTE   'I'+80H,"NPUT"
-        .BYTE   'D'+80H,"IM"
-        .BYTE   'R'+80H,"EAD"
-        .BYTE   'L'+80H,"ET"
-        .BYTE   'G'+80H,"OTO"
-        .BYTE   'R'+80H,"UN"
-        .BYTE   'I'+80H,"F"
-        .BYTE   'R'+80H,"ESTORE"
-        .BYTE   'G'+80H,"OSUB"
-        .BYTE   'R'+80H,"ETURN"
-        .BYTE   'R'+80H,"EM"
-        .BYTE   'S'+80H,"TOP"
-        .BYTE   'O'+80H,"UT"
-        .BYTE   'O'+80H,"N"
-        .BYTE   'N'+80H,"ULL"
-        .BYTE   'W'+80H,"AIT"
-        .BYTE   'D'+80H,"EF"
-        .BYTE   'P'+80H,"OKE"
-        .BYTE   'D'+80H,"OKE"
-        .BYTE   'S'+80H,"CREEN"
-        .BYTE   'L'+80H,"INES"
-        .BYTE   'C'+80H,"LS"
-        .BYTE   'W'+80H,"IDTH"
-        .BYTE   'B'+80H,"YE"
-        .BYTE   'S'+80H,"ET"
-        .BYTE   'R'+80H,"ESET"
-        .BYTE   'P'+80H,"RINT"
-        .BYTE   'C'+80H,"ONT"
-        .BYTE   'L'+80H,"IST"
-        .BYTE   'C'+80H,"LEAR"
-        .BYTE   'C'+80H,"LOAD"
-        .BYTE   'C'+80H,"SAVE"
-        .BYTE   'N'+80H,"EW"
+WORDS:  .BYTE   'E'+80H,"ND"		; PEND:
+        .BYTE   'F'+80H,"OR"		; FOR:
+        .BYTE   'N'+80H,"EXT"		; NEXT:
+        .BYTE   'D'+80H,"ATA"		; DATA:
+        .BYTE   'I'+80H,"NPUT"		; INPUT:
+        .BYTE   'D'+80H,"IM"		; DIM:
+        .BYTE   'R'+80H,"EAD"		; READ:
+        .BYTE   'L'+80H,"ET"		; SET:
+        .BYTE   'G'+80H,"OTO"		; GOTO:
+        .BYTE   'R'+80H,"UN"		; RUN:
+        .BYTE   'I'+80H,"F"		; IF:
+        .BYTE   'R'+80H,"ESTORE"	; RESTOR:
+        .BYTE   'G'+80H,"OSUB"		; GOSUB:
+        .BYTE   'R'+80H,"ETURN"		; RETURN:
+        .BYTE   'R'+80H,"EM"		; REM:
+        .BYTE   'S'+80H,"TOP"		; STOP:
+        .BYTE   'O'+80H,"UT"		; POUT:
+        .BYTE   'O'+80H,"N"		: ON:
+        .BYTE   'N'+80H,"ULL"		; NULL:
+        .BYTE   'W'+80H,"AIT"		: WAIT:
+        .BYTE   'D'+80H,"EF"		: DEF:
+        .BYTE   'P'+80H,"OKE"		: POKE:
+        .BYTE   'D'+80H,"OKE"		: DOKE:
+        .BYTE   'S'+80H,"CREEN"		: REM: NOT IMPLEMENTED
+        .BYTE   'L'+80H,"INES"		: LINES
+        .BYTE   'C'+80H,"LS"		: CLS:
+        .BYTE   'W'+80H,"IDTH"		: WIDTH:
+        .BYTE   'B'+80H,"YE"		: MONITR:
+        .BYTE   'S'+80H,"ET"		: PSET:
+        .BYTE   'R'+80H,"ESET"		; RESET:
+        .BYTE   'P'+80H,"RINT"		: PRINT:
+        .BYTE   'C'+80H,"ONT"		: CONT:
+        .BYTE   'L'+80H,"IST"		: LIST:
+        .BYTE   'C'+80H,"LEAR"		: CLEAR:
+        .BYTE   'P'+80H,"LAY"		: PLAY: WAS CLOAD
+        .BYTE   'C'+80H,"SAVE"		: REM: NOT IMPLEMENTED
+        .BYTE   'N'+80H,"EW"		: NEW
 
         .BYTE   'T'+80H,"AB("
         .BYTE   'T'+80H,"O"
@@ -392,7 +408,7 @@ WORDTB: .WORD   PEND
         .WORD   CONT
         .WORD   LIST
         .WORD   CLEAR
-        .WORD   REM
+        .WORD   PLAY
         .WORD   REM
         .WORD   NEW
 
@@ -421,7 +437,7 @@ ZTIMES  .EQU    0AEH            ; *
 ZDIV    .EQU    0AFH            ; /
 ZOR     .EQU    0B2H            ; OR
 ZGTR    .EQU    0B3H            ; >
-ZEQUAL  .EQU    0B4H            ; M
+ZEQUAL  .EQU    0B4H            ; =
 ZLTH    .EQU    0B5H            ; <
 ZSGN    .EQU    0B6H            ; SGN
 ZPOINT  .EQU    0C7H            ; POINT
@@ -452,27 +468,51 @@ PRITAB: .BYTE   79H             ; Precedence value
 
 ; BASIC ERROR CODE LIST
 
-ERRORS: .BYTE   "NF"            ; NEXT without FOR
-        .BYTE   "SN"            ; Syntax error
-        .BYTE   "RG"            ; RETURN without GOSUB
-        .BYTE   "OD"            ; Out of DATA
-        .BYTE   "FC"            ; Illegal function call
-        .BYTE   "OV"            ; Overflow error
-        .BYTE   "OM"            ; Out of memory
-        .BYTE   "UL"            ; Undefined line
-        .BYTE   "BS"            ; Bad subscript
-        .BYTE   "DD"            ; Re-DIMensioned array
-        .BYTE   "/0"            ; Division by zero
-        .BYTE   "ID"            ; Illegal direct
-        .BYTE   "TM"            ; Type mis-match
-        .BYTE   "OS"            ; Out of string space
-        .BYTE   "LS"            ; String too long
-        .BYTE   "ST"            ; String formula too complex
-        .BYTE   "CN"            ; Can't CONTinue
-        .BYTE   "UF"            ; Undefined FN function
-        .BYTE   "MO"            ; Missing operand
-        .BYTE   "HX"            ; HEX error
-        .BYTE   "BN"            ; BIN error
+#IF ABBRERR
+ERRORS:	.BYTE   "NF"            ; NEXT without FOR
+	.BYTE   "SN"            ; Syntax error
+	.BYTE   "RG"            ; RETURN without GOSUB
+	.BYTE   "OD"            ; Out of DATA
+	.BYTE   "FC"            ; Illegal function call
+	.BYTE   "OV"            ; Overflow error
+	.BYTE   "OM"            ; Out of memory
+	.BYTE   "UL"            ; Undefined line
+	.BYTE   "BS"            ; Bad subscript
+	.BYTE   "DD"            ; Re-DIMensioned array
+	.BYTE   "/0"            ; Division by zero
+	.BYTE   "ID"            ; Illegal direct
+	.BYTE   "TM"            ; Type mis-match
+	.BYTE   "OS"            ; Out of string space
+	.BYTE   "LS"            ; String too long
+	.BYTE   "ST"            ; String formula too complex
+	.BYTE   "CN"            ; Can't CONTinue
+	.BYTE   "UF"            ; Undefined FN function
+	.BYTE   "MO"            ; Missing operand
+	.BYTE   "HX"            ; HEX error
+	.BYTE   "BN"            ; BIN error
+#ELSE
+ERRORS: .BYTE   "NEXT without FOR",0
+        .BYTE   "Syntax",0
+        .BYTE   "RETURN without GOSUB",0
+        .BYTE   "Out of DATA",0
+        .BYTE   "Illegal function call",0
+        .BYTE   "Overflow",0
+        .BYTE   "Out of memory",0
+        .BYTE   "Undefined line",0
+        .BYTE   "Bad subscript",0
+        .BYTE   "Re-DIMensioned array",0
+        .BYTE   "Division by zero",0
+        .BYTE   "Illegal direct",0
+        .BYTE   "Type mis-match",0
+        .BYTE   "Out of string space",0
+        .BYTE   "String too long",0
+        .BYTE   "String formula too complex",0
+        .BYTE   "Can't CONTinue",0
+        .BYTE   "Undefined FN function",0
+        .BYTE   "Missing operand",0
+        .BYTE   "HEX",0
+        .BYTE   "BIN",0
+#ENDIF
 
 ; INITIALISATION TABLE -------------------------------------------------------
 
@@ -573,10 +613,10 @@ CHKSTK: PUSH    HL              ; Save code string address
         ADD     HL,BC
         .BYTE   3EH             ; Skip "PUSH HL"
 ENFMEM: PUSH    HL              ; Save code string address
-        LD      A,0D0H ;LOW -48 ; 48 Bytes minimum RAM
+        LD      A,0D0H 		;LOW -48 ; 48 Bytes minimum RAM
         SUB     L
         LD      L,A
-        LD      A,0FFH; HIGH (-48) ; 48 Bytes minimum RAM
+        LD      A,0FFH		; HIGH (-48) ; 48 Bytes minimum RAM
         SBC     A,H
         JP      C,OMERR         ; Not enough - ?OM Error
         LD      H,A
@@ -609,11 +649,25 @@ ERROR:  CALL    CLREG           ; Clear registers and stack
         LD      D,A             ; D = 0 (A is 0)
         LD      A,'?'
         CALL    OUTC            ; Output '?'
-        ADD     HL,DE           ; Offset to correct error code
-        LD      A,(HL)          ; First character
-        CALL    OUTC            ; Output it
-        CALL    GETCHR          ; Get next character
-        CALL    OUTC            ; Output it
+#IF ABBRERR
+	ADD	HL,DE           ; Offset to correct error code
+	LD	A,(HL)          ; First character
+	CALL	OUTC            ; Output it
+	CALL	GETCHR          ; Get next character
+	CALL	OUTC            ; Output it
+#ELSE
+	PUSH	BC		; Count through
+	LD	B,E		; the error list
+	SRL	B		; until we get
+	JR	Z,CHRZRO	; error message
+NXCHR:	LD	A,(HL)		; 
+	OR	A		; E/2 = entry
+	INC	HL		; number in the
+	JR	NZ,NXCHR	; list.
+	DJNZ	NXCHR
+CHRZRO:	CALL	PRS		; Display message.
+	POP	BC
+#ENDIF
         LD      HL,ERRMSG       ; "Error" message
 ERRIN:  CALL    PRS             ; Output message
         LD      HL,(LINEAT)     ; Get line of error
@@ -1257,34 +1311,36 @@ UPDATA: LD      (NXTDAT),HL     ; Update DATA pointer
         EX      DE,HL           ; Restore code string address
         RET
 
+;	 GET CONSOLE INPUT STATUS VIA HBIOS
 
 TSTBRK: 
-		; SAVE INCOMING REGISTERS (AF IS OUTPUT)
-		PUSH	BC
-		PUSH	DE
-		PUSH	HL
-		; GET CONSOLE INPUT STATUS VIA HBIOS
-		LD		C,CIODEV_CONSOLE; CONSOLE UNIT TO C
-		LD		B,BF_CIOIST		; HBIOS FUNC: INPUT STATUS
-		RST		08				; HBIOS RETURNS STATUS IN A
-		; RESTORE REGISTERS (AF IS OUTPUT)
-		POP		HL
-		POP		DE
-		POP		BC
+	PUSH	BC		; SAVE INCOMING REGISTERS (AF IS OUTPUT)
+	PUSH	DE
+	PUSH	HL
+
+	LD	C,CIODEV_CONSOLE; CONSOLE UNIT TO C
+	LD	B,BF_CIOIST	; HBIOS FUNC: INPUT STATUS
+	RST	08		; HBIOS RETURNS STATUS IN A
+
+	POP	HL		; RESTORE REGISTERS (AF IS OUTPUT)
+	POP	DE
+	POP	BC
         RET     Z               ; No key, go back
-		PUSH	BC
-		PUSH	DE
-		PUSH	HL
-		; INPUT CHARACTER FROM CONSOLE VIA HBIOS
-		LD		C,CIODEV_CONSOLE; CONSOLE UNIT TO C
-		LD		B,BF_CIOIN		; HBIOS FUNC: INPUT CHAR
-		RST		08				; HBIOS READS CHARACTDR
-		LD		A,E				; MOVE CHARACTER TO A FOR RETURN
+	PUSH	BC
+	PUSH	DE
+	PUSH	HL
+
+; 	INPUT CHARACTER FROM CONSOLE VIA HBIOS
+
+	LD	C,CIODEV_CONSOLE; CONSOLE UNIT TO C
+	LD	B,BF_CIOIN	; HBIOS FUNC: INPUT CHAR
+	RST	08		; HBIOS READS CHARACTDR
+	LD	A,E		; MOVE CHARACTER TO A FOR RETURN
 ;
-		; RESTORE REGISTERS (AF IS OUTPUT)
-		POP		HL
-		POP		DE
-		POP		BC
+		
+	POP	HL		; RESTORE REGISTERS (AF IS OUTPUT)
+	POP	DE
+	POP	BC
  
         CP      ESC             ; Escape key?
         JR      Z,BRK           ; Yes, break
@@ -1292,22 +1348,22 @@ TSTBRK:
         JR      Z,BRK           ; Yes, break
         CP      CTRLS           ; Stop scrolling?
         RET     NZ              ; Other key, ignore
-STALL:  		            ; Wait for key
-		; SAVE INCOMING REGISTERS (AF IS OUTPUT)
-		PUSH	BC
-		PUSH	DE
-		PUSH	HL
+STALL:  		        ; Wait for key
+
+	PUSH	BC		; SAVE INCOMING REGISTERS (AF IS OUTPUT)
+	PUSH	DE
+	PUSH	HL
 ;
-		; INPUT CHARACTER FROM CONSOLE VIA HBIOS
-		LD		C,CIODEV_CONSOLE	; CONSOLE UNIT TO C
-		LD		B,BF_CIOIN		; HBIOS FUNC: INPUT CHAR
-		RST		08			; HBIOS READS CHARACTDR
-		LD		A,E			; MOVE CHARACTER TO A FOR RETURN
+;	INPUT CHARACTER FROM CONSOLE VIA HBIOS
 ;
-		; RESTORE REGISTERS (AF IS OUTPUT)
-		POP		HL
-		POP		DE
-		POP		BC	
+	LD	C,CIODEV_CONSOLE; CONSOLE UNIT TO C
+	LD	B,BF_CIOIN	; HBIOS FUNC: INPUT CHAR
+	RST	08		; HBIOS READS CHARACTDR
+	LD	A,E		; MOVE CHARACTER TO A FOR RETURN
+;	
+	POP	HL		; RESTORE REGISTERS (AF IS OUTPUT)
+	POP	DE
+	POP	BC	
         CP      CTRLQ           ; Resume scrolling?
         RET      Z              ; Release the chokehold
         CP      CTRLC           ; Second break?
@@ -1356,7 +1412,6 @@ NULL:   CALL    GETINT          ; Get integer 0-255
         RET     NZ              ; Return if bad value
         LD      (NULLS),A       ; Set nulls number
         RET
-
 
 ACCSUM: PUSH    HL              ; Save address in array
         LD      HL,(CHKSUM)     ; Get check sum
@@ -1967,8 +2022,8 @@ OPRND:  XOR     A               ; Get operand routine
         JP      C,ASCTFP        ; Number - Get value
         CALL    CHKLTR          ; See if a letter
         JP      NC,CONVAR       ; Letter - Find variable
-        CP		'&'				; &H = HEX, &B = BINARY
-        JR		NZ, NOTAMP
+        CP	'&'		; &H = HEX, &B = BINARY
+        JR	NZ, NOTAMP
         CALL    GETCHR          ; Get next character
         CP      'H'             ; Hex number indicated? [function added]
         JP      Z,HEXTFP        ; Convert Hex to FPREG
@@ -2981,14 +3036,14 @@ VAL:    CALL    GETLEN          ; Get length of string
         EX      (SP),HL         ; Save string end,get start
         PUSH    BC              ; Save end+1 byte
         LD      A,(HL)          ; Get starting byte
-    CP	'$'		; Hex number indicated? [function added]
-    JP	NZ,VAL1
-    CALL	HEXTFP		; Convert Hex to FPREG
-    JR	VAL3
+	CP	'$'		; Hex number indicated? [function added]
+	JP	NZ,VAL1
+	CALL	HEXTFP		; Convert Hex to FPREG
+	JR	VAL3
 VAL1:	CP	'%'		; Binary number indicated? [function added]
-    JP	NZ,VAL2
-    CALL	BINTFP		; Convert Bin to FPREG
-    JR	VAL3
+	JP	NZ,VAL2
+	CALL	BINTFP		; Convert Bin to FPREG
+	JR	VAL3
 VAL2:   CALL    ASCTFP          ; Convert ASCII string to FP
 VAL3:   POP     BC              ; Restore end+1 byte
         POP     HL              ; Restore end+1 address
@@ -3054,7 +3109,7 @@ POKE:   CALL    GETNUM          ; Get memory address
         CALL    DEINT           ; Get integer -32768 to 3276
         PUSH    DE              ; Save memory address
         CALL    CHKSYN          ; Make sure ',' follows
-        .BYTE      ','
+        .BYTE   ','
         CALL    GETINT          ; Get integer 0-255
         POP     DE              ; Restore memory address
         LD      (DE),A          ; Load it into memory
@@ -4143,23 +4198,35 @@ ATNTAB: .BYTE   9                       ; Table used by ATN
 
 ARET:   RET                     ; A RETurn instruction
 
+;	INPUT CHARACTER FROM CONSOLE VIA HBIOS
+
 GETINP: 
-		PUSH	BC
-		PUSH	DE
-		PUSH	HL
-		; INPUT CHARACTER FROM CONSOLE VIA HBIOS
-		LD	C,CIODEV_CONSOLE	; CONSOLE UNIT TO C
-		LD	B,BF_CIOIN			; HBIOS FUNC: INPUT CHAR
-		RST	08				; HBIOS READS CHARACTDR
-		LD	A,E				; MOVE CHARACTER TO A FOR RETURN
-		; RESTORE REGISTERS (AF IS OUTPUT)
-		POP	HL
-		POP	DE
-		POP	BC
+	PUSH	BC
+	PUSH	DE
+	PUSH	HL
+
+	LD	C,CIODEV_CONSOLE; CONSOLE UNIT TO C
+	LD	B,BF_CIOIN	; HBIOS FUNC: INPUT CHAR
+	RST	08		; HBIOS READS CHARACTDR
+	LD	A,E		; MOVE CHARACTER TO A FOR RETURN
+		
+	POP	HL		; RESTORE REGISTERS (AF IS OUTPUT)
+	POP	DE
+	POP	BC
         RET
-CLS: 
-        LD      A,CS            ; ASCII Clear screen
-        JP      MONOUT          ; Output character
+CLS:
+#IF	VT100
+	LD	HL,VT_CLS	; Output zero terminated
+VT0OUT:	LD	A,(HL)		; VT100 escape sequence
+	INC	HL		; directly to console.
+	OR	A
+	CALL	NZ,MONOUT	; clear screen
+	JR	NZ,VT0OUT	; and home cursor
+	RET
+#ELSE
+       LD      A,CS            ; ASCII Clear screen
+       JP      MONOUT          ; Output character
+#ENDIF
 
 WIDTH:  CALL    GETINT          ; Get integer 0-255
         LD      A,E             ; Width to A
@@ -4199,26 +4266,26 @@ DOKE:   CALL    GETNUM          ; Get a number
 HEX: 	CALL	TSTNUM          ; Verify it's a number
         CALL	DEINT           ; Get integer -32768 to 32767
         PUSH	BC              ; Save contents of BC
-        LD	    HL,PBUFF
-        LD	    A,D             ; Get high order into A
+        LD	HL,PBUFF
+        LD	A,D             ; Get high order into A
         CP      $0
-		JR      Z,HEX2          ; Skip output if both high digits are zero
+	JR      Z,HEX2          ; Skip output if both high digits are zero
         CALL    BYT2ASC         ; Convert D to ASCII
-		LD      A,B
-		CP      '0'
-		JR      Z,HEX1          ; Don't store high digit if zero
-        LD	    (HL),B          ; Store it to PBUFF
-        INC	    HL              ; Next location
-HEX1:   LD	    (HL),C          ; Store C to PBUFF+1
+	LD      A,B
+	CP      '0'
+	JR      Z,HEX1          ; Don't store high digit if zero
+        LD	(HL),B          ; Store it to PBUFF
+        INC	HL              ; Next location
+HEX1:   LD	(HL),C          ; Store C to PBUFF+1
         INC     HL              ; Next location
-HEX2:   LD	    A,E             ; Get lower byte
+HEX2:   LD	A,E             ; Get lower byte
         CALL    BYT2ASC         ; Convert E to ASCII
-		LD      A,D
+	LD      A,D
         CP      $0
-		JR      NZ,HEX3         ; If upper byte was not zero then always print lower byte
-		LD      A,B
-		CP      '0'             ; If high digit of lower byte is zero then don't print
-		JR      Z,HEX4
+	JR      NZ,HEX3         ; If upper byte was not zero then always print lower byte
+	LD      A,B
+	CP      '0'             ; If high digit of lower byte is zero then don't print
+	JR      Z,HEX4
 HEX3:   LD      (HL),B          ; to PBUFF+2
         INC     HL              ; Next location
 HEX4:   LD      (HL),C          ; to PBUFF+3
@@ -4254,6 +4321,7 @@ ADD301	ADD     A,$30           ; And make it full ASCII
 ; Convert "&Hnnnn" to FPREG
 ; Gets a character from (HL) checks for Hexadecimal ASCII numbers "&Hnnnn"
 ; Char is in A, NC if char is ;<=>?@ A-z, CY is set if 0-9
+;
 HEXTFP  EX      DE,HL           ; Move code string pointer to DE
         LD      HL,$0000        ; Zero out the value
         CALL    GETHEX          ; Check the number for valid hex
@@ -4362,39 +4430,39 @@ CHKBIN: INC     DE
 BINERR: LD      E,BN            ; ?BIN Error
         JP      ERROR
 
-
 JJUMP1: 
         LD      IX,-1           ; Flag cold start
         JP      CSTART          ; Go and initialise
 
-MONOUT: 
-		; SAVE ALL INCOMING REGISTERS
-		PUSH	AF
-		PUSH	BC
-		PUSH	DE
-		PUSH	HL
-		; OUTPUT CHARACTER TO CONSOLE VIA HBIOS
-		LD		E,A				; OUTPUT CHAR TO E
-		LD		C,CIODEV_CONSOLE; CONSOLE UNIT TO C
-		LD		B,BF_CIOOUT		; HBIOS FUNC: OUTPUT CHAR
-		RST		08				; HBIOS OUTPUTS CHARACTDR
-		; RESTORE ALL REGISTERS
-		POP		HL
-		POP		DE
-		POP		BC
-		POP		AF
-		RET
+;	OUTPUT CHARACTER TO CONSOLE VIA HBIOS
 
-MONITR: LD		A,BID_BOOT		; BOOT BANK
-		LD		HL,0			; ADDRESS ZERO
-		CALL	HB_BNKCALL		; DOES NOT RETURN
+MONOUT: 
+	PUSH	AF		; SAVE ALL INCOMING REGISTERS
+	PUSH	BC
+	PUSH	DE
+	PUSH	HL
+
+	LD	E,A		; OUTPUT CHAR TO E
+	LD	C,CIODEV_CONSOLE; CONSOLE UNIT TO C
+	LD	B,BF_CIOOUT	; HBIOS FUNC: OUTPUT CHAR
+	RST	08		; HBIOS OUTPUTS CHARACTDR
+
+	POP	HL		; RESTORE ALL REGISTERS
+	POP	DE
+	POP	BC
+	POP	AF
+	RET
+
+MONITR: LD	A,BID_BOOT	; BOOT BANK
+	LD	HL,0		; ADDRESS ZERO
+	CALL	HB_BNKCALL	; DOES NOT RETURN
 
 INITST: LD      A,0             ; Clear break flag
         LD      (BRKFLG),A
+	CALL	SET_DUR_TBL	; SET UP SOUND TABLE
         JP      INIT
 
 ARETN:  RETN                    ; Return from NMI
-
 
 TSTBIT: PUSH    AF              ; Save bit mask
         AND     B               ; Get common bits
@@ -4406,19 +4474,269 @@ TSTBIT: PUSH    AF              ; Save bit mask
 OUTNCR: CALL    OUTC            ; Output character in A
         JP      PRNTCRLF        ; Output CRLF
 		
-TXT_READY:
-	.DB   CR,LF
-	.TEXT   "BASIC READY "
-	.DB   CR,LF,0FFH	
+; ---------------------------------------------------------------------------------------
+
+;	PLAY	O,N,D		; PLAY OCTAVE 0-8, NOTE N (0-11), DURATION (1-8) [1/8 - 8/8 SECONDS]
+
+PLAY:	CALL    GETINT          ; GET OCTAVE
+	PUSH	AF		; AND SAVE
+
+        CALL    CHKSYN          ; Make sure ',' follows
+        .BYTE   ','
+
+        CALL    GETINT          ; GET NOTE
+	PUSH	HL		; SAVE SYNTAX POINTER
+	LD	L,A
+	LD	H,0
+	ADD	HL,HL		; X2 
+	ADD	HL,HL		; X4
+	LD	DE,FRQDURTBL	; POINT TO NOTE ENTRY
+	ADD	HL,DE		; ITS IN HL
+
+	EX	(SP),HL		; RESTORE SYNTAX POINTER
+				; IN HL. NOTE PTR ON STACK
+
+        CALL    CHKSYN          ; Make sure ',' follows
+        .BYTE   ','
+        CALL    GETINT          ; GET DURATION
+
+	POP	DE		; GET NOTE PTR IN DE
+        EX	(SP),HL	        ; GET OCTAVE IN HL. SYNTAX POINTER ON STACK
+	EX	DE,HL		; PUT NOTE PTR IN HL, OCTAVE IN DE
+
+	PUSH	BC		; SAVE SYNTAX POINTER
+	LD	B,D		; SAVE OCTAVE
+	PUSH	AF		; SAVE DURATION
+
+	LD	A,(HL)		; LOAD 1ST ARG
+	INC	HL		; IN DE
+	LD	E,A		; WHICH IS THE
+	LD	A,(HL)		; FREQUENCY FOR
+	INC	HL		; THE EIGHTH
+	LD	D,A		; OCTAVE
+
+	PUSH	DE
+
+	LD	A,(HL)		; LOAD 2ND ARG
+	INC	HL		; IN DE
+	LD	E,A		; WHICH IS THE 
+	LD	A,(HL)		; PITCH
+	LD	D,A
+
+	PUSH	DE		; SETUP ARGS IN HL
+	POP	HL		; AND DE
+	POP	DE		; DE = FREQUENCY
+				; HL = PITCH
+	LD	A,8		; DIVIDE THE
+	SUB	B		; FREQUENCY BASED
+	JR	Z,SPK_OCTOK	; ON THE OCTAVE
+	LD	B,A
+SPK_OCTDIV:
+	SRL	D	; 0>D>C	; MULTIPLY THE	
+	RR	E	; C>E>C	; DURATION EVERY	
+	SLA	L	; C<L<0	; TIME WE DIVIDE
+	RL	H	; C<H<C	; THE FREQUENCY
+	DJNZ	SPK_OCTDIV
+
+	JR	NC,SPK_OCTOK	; SET TO MAXIMUM
+	LD	HL,$FFFF	; IF OVERFLOW
+
+SPK_OCTOK:
+
+	POP	BC		; MULTIPLY CHL X B
+	PUSH	HL		; SAVE
+
+	LD	C,0
+	LD	H,C
+	LD	L,C
+	CCF
+MULSKP:	ADD	HL,DE
+	JR	NC,MULDLP 
+	INC	C
+MULDLP:	DJNZ	MULSKP		; DIVIDE BY 8
+
+	SRL	C		; 0>C>C	; BCHL = BCHL / 2
+	RR	H		; C>H>C ;
+	RR	L		; C>L>C	;
+	SRL	C		; 0>C>C	; BCHL = BCHL / 2
+	RR	H		; C>H>C ;
+	RR	L		; C>L>C	;
+	SRL	C		; 0>C>C	; BCHL = BCHL / 2
+	RR	H		; C>H>C ;
+	RR	L		; C>L>C	;
+
+	POP	DE
+	EX	DE,HL
+
+;	The following SPK_BEEPER routine is a modification of code from 
+;	"The Complete SPECTRUM ROM DISSASSEMBLY" by Dr Ian Logan & Dr Frank O’Hara
+;	https://www.esocop.org/docs/CompleteSpectrumROMDisassemblyThe.pdf
+;
+;	DE 	Number of passes to make through the sound generation loop
+;	HL 	Loop delay parameter
+
+	PUSH	IX
+	DI 			; Disable the interrupt for the duration of a 'beep'.
+	LD	A,L 		; Save L temporarily.
+	SRL	L 		; Each '1' in the L register is to count 4 T states, but take INT (L/4) and count 16 T states instead.
+	SRL	L
+	CPL 			; Go back to the original value in L and find how many were lost by taking 3-(A mod 4).
+	AND	$03
+	LD	C,A
+	LD	B,$00
+	LD	IX,SPK_DLYADJ 	; The base address of the timing loop.
+	ADD	IX,BC		; Alter the length of the timing loop. Use an earlier starting point for each '1' lost by taking INT (L/4).
+	LD	A,(RTCVAL)	; Fetch the present border colour from BORDCR and move it to bits 2, 1 and 0 of the A register.
+;
+;	The HL register holds the 'length of the timing loop' with 16 T states being used for each '1' in the L register and 1024 T states for each '1' in the H register.
+;
+SPK_DLYADJ:
+	NOP 			; Add 4 T states for each earlier entry point that is used.
+	NOP
+	NOP
+	INC	B 		; The values in the B and C registers will come from the H and L registers - see below.
+	INC	C
+BE_H_L_LP:
+	DEC	C		; The 'timing loop', i.e. BC*4 T states. (But note that at the half-cycle point, C will be equal to L+1.)
+	JR	NZ,BE_H_L_LP
+	LD	C,$3F
+	DEC	B
+	JP	NZ,BE_H_L_LP
+;
+	XOR	%00000100	; Flip bit 2. The loudspeaker is now alternately activated and deactivated.
+	OUT	(RTCIO),A	; Perform the 'OUT' operation, leaving other bits unchanged.
+	LD	B,H		; Reset the B register.
+	LD	C,A		; Save the A register.
+	BIT	4,A 		; Jump if at the half-cycle point.
+	JR	NZ,BE_AGAIN
+;
+	LD	A,D		; After a full cycle the DE register pair is tested.
+	OR	E
+	JR	Z,BE_END	; Jump forward if the last complete pass has been made already.
+	LD	A,C		; Fetch the saved value.
+	LD	C,L		; Reset the C register.
+	DEC	DE		; Decrease the pass counter.
+	JP	(IX)		; Jump back to the required starting location of the loop.
+;	
+BE_AGAIN:			; The parameters for the second half-cycle are set up.
+	LD	C,L		; Reset the C register.
+	INC	C 		; Add 16 T states as this path is shorter.
+	JP	(IX)		; Jump back.
+
+BE_END:	EI
+	POP	IX
+	POP	BC		; RECALL SYNTAX POINTER
+	POP	HL
+	RET
+;
+RTCVAL	.DB	0
+;
+;	SETUP THE ONE SECOND TONE DURATION TABLE BASED ON PROCESSOR SPEED AND TONE FREQUENCY
+;
+;	DURATION = (CPUMHZ / 8) / FREQUENCY
+;	DURATION = (CPUKHZ * 1000 / 8 ) / FREQUENCY
+;	DURATION = (CPUKHZ * 125 ) / FREQUENCY
+;	DURATION = (CPUKHZ * 256 / 2 - CPUKHZ - (2 * CPUKHZ) ) / FREQUENCY
+
+SET_DUR_TBL:
+	LD	B,BF_SYSGET		; GET CPU SPEED
+	LD	C,BF_SYSGET_CPUINFO	; FROM HBIOS
+	RST	08			; IN DE
+
+	PUSH	DE			; SAVE FOR CALCULATION
+	POP	BC			; - CPUKHZ - (2 * CPUKHZ)
+
+	LD	H,E			; DEHL = DE * 256
+	LD	E,D
+	LD	D,0
+	LD	L,D
+
+	SRL	E		; 0>E>C	; DEHL = DEHL / 2
+	RR	H		; C>H>C ;
+	RR	L		; C>L>C	;
+
+	SBC	HL,BC			; DEHL = DEHL - CPUKHZ
+	JR	NC,FRQ_AJ1
+	DEC	DE
+FRQ_AJ1:SLA	C		; C<C<0	; DEHL = DEHL - (2 * CPUKHZ)
+	RL	B		; C<B<C
+	SBC	HL,BC
+	JR	NC,FRQ_AJ2
+	DEC	DE
+
+FRQ_AJ2:	; AT THIS POINT DEHL = CPUKHZ * 125 E.G.  9982 KHZ * 125 = 0012:DE14
+
+	PUSH	HL			; DEHL = CPUKHZ / 8) / FREQUENCY
+	POP	IX			; HLIX = DENOMINATOR
+	EX	DE,HL
+
+	LD	IY,FRQDURTBL		; POINT TO THE TABLE WE 
+	LD	B,FDTBSIZ		; WANT TO READ AND UPDATE
+TBL_LP:	PUSH	BC
+
+	LD	C,(IY+0)		; READ THE FREQUENCY
+	LD	B,(IY+1)		; FROM THE TABLE IN BC
+
+	PUSH	IX			; STORE DENOMINATOR FOR NEXT LOOP
+	PUSH	HL
 		
-SLACK		.EQU	(BAS_END - $)
-		.FILL	SLACK,00H
-;
-BAS_STACK	.EQU	$
-;
-		.ECHO	"BASIC space remaining: "
-		.ECHO	SLACK
-		.ECHO	" bytes.\n"
+ 	LD	DE,0			; HLIX = HLIX / BC, DE = REMAINDER
+	LD	A,32
+DIV_LP:	ADD	IX,IX
+	ADC	HL,HL
+	EX	DE,HL
+	ADC	HL,HL
+	OR	A
+	SBC	HL,BC
+	INC	IX
+	JR	NC,DIV_CANSUB
+	ADD	HL,BC
+	DEC	IX
+DIV_CANSUB:
+	EX	DE,HL
+	DEC	A
+	JR	NZ, DIV_LP		; IX = RESULT
 
-.end
+	PUSH	IX			; SAVE RESULT IN TABLE
+	POP	DE
+DUROVF:	LD	(IY+2),E
+	LD	(IY+3),D
 
+	LD	DE,4			; POINT TO NEXT TABLE 
+	ADD	IY,DE			; ENTRY TO UPDATE
+
+	POP	HL			; RETREIVE THE DENOMINATOR 
+	POP	IX			; FOR THE NEXT LOOP
+
+	POP	BC			; RETREIVE THE
+	DJNZ	TBL_LP			; LOOP COUNTER
+
+	RET
+;
+;	ONE OCTAVE TONE TABLE IN FREQUENCY, DURATION FORMAT. TO COMPENSATE FOR DIFFERENT
+;	CPU FREQUENCIES THE DURATION IS CALCULATED AND POPULATED AT STARTUP. DIFFERENT OCTAVE 
+;	AND DURATIONS ARE CALCULATE BY MODIFYING THE VALUES READ FROM THIS TABLE.
+;
+FRQDURTBL:
+	.DW	$105A, $0, $1152, $0  	; C, C#
+	.DW	$125A, $0, $1372, $0	; D, D#
+	.DW	$149A, $0		; E
+	.DW	$15D3, $0, $171F, $0	; F, F#
+	.DW	$1875, $0, $19F4, $0	; G, G#
+	.DW	$1B80, $0, $1D22, $0	; A, A#
+	.DW	$1EDE, $0		; B
+;
+FDTBSIZ	.EQU	($-FRQDURTBL)/4
+;
+#IF VT100
+VT_CLS	.BYTE	ESC,"[2J",ESC,"[H",0	; vt100 clear screen & home
+#ENDIF
+;
+SLACK	.EQU	(BAS_END - $)
+	.FILL	SLACK,00H
+;
+	.ECHO	"BASIC space remaining: "
+	.ECHO	SLACK
+	.ECHO	" bytes.\n"
+
+.END
