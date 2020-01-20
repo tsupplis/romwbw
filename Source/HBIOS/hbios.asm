@@ -54,6 +54,7 @@
 ;      - config/<plt>_<cfg>.asm
 ;        - cfg_<plt>.asm
 ;  - <drivers>.asm
+;  - <fonts>.asm
 ;  - util.asm
 ;  - time.asm
 ;  - bcd.asm
@@ -61,6 +62,7 @@
 ;  - encode.asm
 ;  - [xio|mio].asm
 ;  - dsky.asm
+;  - unlzsa2s.asm
 ; 
 ;
 ; INCLUDE GENERIC STUFF
@@ -910,6 +912,38 @@ HB_START1:				; BNKCALL ARRIVES HERE, BUT NOW RUNNING IN RAM BANK
   #ENDIF
 #ENDIF
 ;
+;==================================================================================================
+;	RECOVERY MODE
+;==================================================================================================
+;
+;	PLATFORM SPECIFIC CODE FOR DETECTING RECOVERY MODE SWITCH
+;
+#IF	(BT_REC_TYPE!=BT_REC_NONE)
+ #IF (BT_REC_TYPE==BT_REC_FORCE)
+	LD	A,1			; SET FOR RECOVERY MODE
+	LD	(HB_BOOT_REC),A		; SAVE FOR LATER
+ #ENDIF
+ #IF (PLATFORM == PLT_SBC)
+  #IF (BT_REC_TYPE==BT_REC_SBC01)
+ 	LD	A,%00100000		; DISABLE RTC AND
+	OUT	(RTCIO),A		; DRQ DRIVER READ
+	IN	A,(RTCIO)		; BIT 0 (DRQ). 
+	CPL				; PULLED HIGH
+	AND	1			; IS RECOVERY MODE
+	LD	(HB_BOOT_REC),A		; SAVE FOR LATER
+  #ENDIF
+  #IF (BT_REC_TYPE==BT_REC_SBC02)
+	IN	A,(RTCIO)		; RTC PORT, BIT 6 HAS THE
+	BIT	6,A			; STATE OF CONFIG JUMPER
+	LD	A,1			; JUMPER INSTALLED 
+	JR	Z,SAVE_REC_M		; IS RECOVERY MODE
+	LD	A,0
+SAVE_REC_M:
+	LD	(HB_BOOT_REC),A		; SAVE FOR LATER
+  #ENDIF
+ #ENDIF
+#ENDIF
+;
 	DIAG(%00001111)
 ;
 #IF (DSKYENABLE)
@@ -1154,7 +1188,17 @@ HB_CPU2:
 	LD	(HL),D
 	LD	B,PC_INITTBLLEN
 	POP	DE								; POP (1) DE IS ADDRESS OF TOP OF TABLE
-	CALL	CALLLIST		; PROCESS THE PRE-INIT CALL TABLE
+
+#IF	(BT_REC_TYPE!=BT_REC_NONE)
+	LD	A,(HB_BOOT_REC)		; IF WE ARE IN RECOVERY MODE
+	OR	A			; POINT TO THE RECOVER MODE
+	JR	Z,NOT_REC_M0		; INITIALIZATION TABLE
+	LD	B,PC_INITRLEN
+	LD	DE,PC_INIT_REC
+NOT_REC_M0:
+
+#ENDIF
+	CALL	CALLLIST							; PROCESS THE PRE-INIT CALL TABLE
 ;
 #IF 0
 ;
@@ -1327,8 +1371,19 @@ HB_SPDTST:
 ; PERFORM DEVICE INITIALIZATION
 ;
 	CALL	NEWLINE
+
+#IF	(BT_REC_TYPE!=BT_REC_NONE)
+	LD	A,(HB_BOOT_REC)		; IF WE ARE IN RECOVERY MODE
+	OR	A			; POINT TO THE RECOVER MODE
+	JR	Z,NOT_REC_M1		; INITIALIZATION TABLE
+	LD	B,HB_INITRLEN
+	LD	DE,HB_INIT_REC
+	JR	IS_REC_M1	
+NOT_REC_M1:
+#ENDIF
 	LD	B,HB_INITTBLLEN
 	LD	DE,HB_INITTBL
+IS_REC_M1:
 	CALL	CALLLIST
 ;
 ; RECORD HEAP CURB AT THE CURRENT VALUE OF HEAP TOP.  HEAP CURB
@@ -1429,7 +1484,30 @@ CALLLIST:
 	DJNZ	CALLLIST
 CALLDUMMY:
 	RET
+
+#IF	(BT_REC_TYPE!=BT_REC_NONE)
 ;
+;==================================================================================================
+;   TABLE OF RECOVERY MODE INITIALIZATION ENTRY POINTS
+;==================================================================================================
+;
+; USE "CALLDUMMY" IF NO ENTRY REQUIRED
+;
+PC_INIT_REC:
+#IF	(PLATFORM == PLT_SBC)
+	.DW	UART_PREINIT
+;	.DW	CALLDUMMY
+#ENDIF
+PC_INITRLEN	.EQU	(($ - PC_INIT_REC) / 2)
+;
+HB_INIT_REC:
+#IF	(PLATFORM == PLT_SBC)
+	.DW	UART_INIT
+	.DW	MD_INIT
+#ENDIF
+HB_INITRLEN	.EQU	(($ - HB_INIT_REC) / 2)
+;
+#ENDIF
 ;==================================================================================================
 ;   TABLE OF PRE-CONSOLE INITIALIZATION ENTRY POINTS
 ;==================================================================================================
@@ -1487,6 +1565,9 @@ HB_INITTBL:
 #ENDIF
 #IF (DSRTCENABLE)
 	.DW	DSRTC_INIT
+#ENDIF
+#IF (BQRTCENABLE)
+	.DW	BQRTC_INIT
 #ENDIF
 #IF (VDUENABLE)
 	.DW	VDU_INIT
@@ -1966,6 +2047,9 @@ RTC_DISPATCH:
 #ENDIF
 #IF (DSRTCENABLE)
 	JP	DSRTC_DISPATCH
+#ENDIF
+#IF (BQRTCENABLE)
+	JP	BQRTC_DISPATCH
 #ENDIF
 	;CALL	PANIC
 	OR	$FF
@@ -2753,6 +2837,15 @@ SIZ_DSRTC	.EQU	$ - ORG_DSRTC
 		.ECHO	" bytes.\n"
 #ENDIF
 ;
+#IF (BQRTCENABLE)
+ORG_BQRTC	.EQU	$
+  #INCLUDE "bqrtc.asm"
+SIZ_BQRTC	.EQU	$ - ORG_BQRTC
+		.ECHO	"BQRTC occupies "
+		.ECHO	SIZ_BQRTC
+		.ECHO	" bytes.\n"
+#ENDIF
+;
 #IF (ASCIENABLE)
 ORG_ASCI	.EQU	$
   #INCLUDE "asci.asm"
@@ -2834,23 +2927,46 @@ SIZ_NEC	.EQU	$ - ORG_NEC
 		.ECHO	" bytes.\n"
 #ENDIF
 ;
-#IF (CVDUENABLE | VGAENABLE)
-ORG_FONTHI	.EQU	$
-  #INCLUDE "font_hi.asm"
-SIZ_FONTHI	.EQU	$ - ORG_FONTHI
-		.ECHO	"FONTHI occupies "
-		.ECHO	SIZ_FONTHI
-		.ECHO	" bytes.\n"
+; FONTS AREA
+;
+ORG_FONTS	.EQU	$
+;
+	.ECHO	"FONTS"
+;
+#IFDEF USEFONT8X8
+FONT8X8:
+  #IF USELZSA2
+    #INCLUDE "font8x8c.asm"
+  #ELSE 
+    #INCLUDE "font8x8u.asm" 
+  #ENDIF
+	.ECHO	" 8X8"
 #ENDIF
 ;
-#IF (TMSENABLE)
-ORG_FONTTMS	.EQU	$
-  #INCLUDE "font_tms.asm"
-SIZ_FONTTMS	.EQU	$ - ORG_FONTTMS
-		.ECHO	"FONTTMS occupies "
-		.ECHO	SIZ_FONTTMS
-		.ECHO	" bytes.\n"
+#IFDEF USEFONT8X11
+FONT8X11:
+  #IF USELZSA2
+    #INCLUDE "font8x11c.asm"
+  #ELSE 
+    #INCLUDE "font8x11u.asm" 
+  #ENDIF
+	.ECHO	" 8X11"
 #ENDIF
+;
+#IFDEF USEFONT8X16
+FONT8X16:
+  #IF USELZSA2
+    #INCLUDE "font8x16c.asm"
+  #ELSE 
+    #INCLUDE "font8x16u.asm" 
+  #ENDIF
+	.ECHO	" 8X16"
+#ENDIF
+;
+SIZ_FONTS	.EQU	$ - ORG_FONTS
+		.ECHO	" occupy "
+		.ECHO	SIZ_FONTS
+		.ECHO	" bytes.\n"
 ;
 #IF (CVDUENABLE | VGAENABLE)
 ORG_KBD		.EQU	$
@@ -3022,6 +3138,12 @@ SIZ_CTC	.EQU	$ - ORG_CTC
 #IF (DSKYENABLE)
 #DEFINE	DSKY_KBD
 #INCLUDE "dsky.asm"
+#ENDIF
+;
+; INCLUDE LZSA2 decompression engine if required.
+;
+#IF ((VGAENABLE | CVDUENABLE | TMSENABLE) & USELZSA2)
+#INCLUDE "unlzsa2s.asm"
 #ENDIF
 ;
 ; DETECT CPU SPEED USING DS-1302 RTC
@@ -3863,6 +3985,10 @@ HB_CPUTYPE	.DB	0		; 0=Z80, 1=80180, 2=SL1960, 3=ASCI BRG
 RTCVAL		.DB	0		; SHADOW VALUE FOR RTC LATCH PORT
 ;
 HB_BATCOND	.DB	0		; BATTERY CONDITION (0=LOW, 1=OK)
+;
+#IF	(BT_REC_TYPE!=BT_REC_NONE)
+HB_BOOT_REC	.DB	0		; BOOT MODE (0=NORMAL, 1=RECOVERY MODE)
+#ENDIF
 ;
 STR_BANNER	.DB	"RetroBrew HBIOS v", BIOSVER, ", ", TIMESTAMP, "$"
 STR_PLATFORM	.DB	PLATFORM_NAME, "$"

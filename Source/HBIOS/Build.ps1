@@ -20,7 +20,7 @@ param([string]$Platform = "", [string]$Config = "", [string]$RomSize = "512", [s
 # UNA BIOS is simply imbedded, it is not built here.
 #
 $PlatformListZ80 = "SBC", "ZETA", "ZETA2", "RCZ80", "EZZ80", "UNA"
-$PlatformListZ180 = "N8", "MK4", "RCZ180", "SCZ180"
+$PlatformListZ180 = "N8", "MK4", "RCZ180", "SCZ180", "DYNO"
 
 #
 # Establish the build platform.  It may have been passed in on the command line.  Validate
@@ -165,6 +165,9 @@ Copy-Item '..\zsdos\zsdos.bin' 'zsdos.bin'
 
 # Bring over previously assembled binary copy of Forth for later use.
 Copy-Item '..\Forth\camel80.bin' 'camel80.bin'
+
+# Bring over previously generated font files.
+Copy-Item '..\Fonts\font*.asm' '.'
 
 # Assemble individual components.  Note in the case of UNA, there is less to build.
 Asm 'dbgmon'

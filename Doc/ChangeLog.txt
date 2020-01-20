@@ -32,6 +32,13 @@ Version 2.9.2
 - WBW: More flexible table-driven config in TUNE.COM
 - PMS: Added timer support for Zilog Peripherals ECB Board
 - PLS: Enhanced Intel Hex Load in dbgmon
+- WBW: Overhaul disk image creation
+- WBW: Added support for Dyno platform (based on work by Steve Garcia)
+- S?G: Added support for BQ4845 RTC (bqrtc.asm)
+- PMS: Added 80x30 video mode to VGA3 driver
+- PMS: Added 80x43 video mode
+- PMS: Added font compression option
+- PMS: Added a "safe mode" startup w/ minimal device support
 
 Version 2.9.1
 -------------
