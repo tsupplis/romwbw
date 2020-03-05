@@ -6,12 +6,13 @@
 #
 OBJECTS = cpmldr.com cpmldr.sys cpm3res cpm3bnk zpmbios3 cpm3.sys gencpm.dat
 OTHERS = cpmldr.rel biosldr.rel cpm3res.sys cpm3bnk.sys zpmbios3.spr loader.bin cpmldr.bin
+OTHERS += biosldrc.rel biosldrd.rel
 
 TOOLS = ../../Tools
 include $(TOOLS)/Makefile.inc
 
 BIOSOBJS = bioskrnl.rel scb.rel boot.rel chario.rel 
-BIOSOBJS += move.rel drvtbl.rel diskio.rel
+BIOSOBJS += move.rel drvtbl.rel diskio.rel util.rel
 COMMA := ,
 NULL :=
 SPACE := $(NULL) $(NULL)
@@ -21,10 +22,10 @@ DEFCPM3 = bnk
 #DEFCPM3 = res
 
 clean:: biosclean
-	rm -f bios3.spr bnkbios3.spr zpmbios3.spr cpmldr.com gencpm.dat options.lib
+	@rm -f bios3.spr bnkbios3.spr zpmbios3.spr cpmldr.com gencpm.dat options.lib ldropts.lib
 
 biosclean:
-	rm -f $(BIOSOBJS)
+	@rm -f $(BIOSOBJS)
 
 cpm3res:
 	make biosclean

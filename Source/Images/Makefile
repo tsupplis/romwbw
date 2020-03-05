@@ -6,15 +6,18 @@ SYSTEMS = ../CPM22/cpm_wbw.sys ../ZSDOS/zsys_wbw.sys ../CPM3/cpmldr.sys
 FDIMGS = fd_cpm22.img fd_zsdos.img fd_nzcom.img \
 	fd_cpm3.img fd_zpm3.img fd_ws4.img
 HDIMGS = hd_cpm22.img hd_zsdos.img hd_nzcom.img \
-	hd_cpm3.img hd_zpm3.img hd_ws4.img hd_bp.img
+	hd_cpm3.img hd_zpm3.img hd_ws4.img
+# HDIMGS += hd_bp.img
 
 OBJECTS = $(FDIMGS) $(HDIMGS) hd_combo.img
-OTHERS = $(SYSTEMS) blank144 blankhd
+OTHERS = blank144 blankhd
 
 DEST=../../Binary
 
 TOOLS = ../../Tools
 include $(TOOLS)/Makefile.inc
+
+DIFFPATH = $(DIFFTO)/Binary
 
 hd_combo.img:	$(HDIMGS)
 	cat $(HDIMGS) > $@
@@ -37,7 +40,7 @@ blankhd:
 	@echo Making Blank Hd of size $(HDSIZE)k
 	@LANG=en_US.US-ASCII tr '\000' '\345' </dev/zero | dd of=$@ bs=1024 count=$(HDSIZE) 2>/dev/null
 
-%.img:: $(SYSTEMS) blank144 blankhd
+%.img: $(SYSTEMS) blank144 blankhd Makefile
 	@sys= ; \
 	case $@ in \
 		(*cpm22*) sys=../CPM22/cpm_wbw.sys;; \
@@ -52,26 +55,48 @@ blankhd:
 	d=$$(echo $(basename $@) | sed s/$$type//) ; \
 	echo Generating $@ ; \
 	cp $$proto $@ ; \
+	if [ "$$sys" ] ; then \
+		echo copying system $$sys to $@ ; \
+		$(BINDIR)/mkfs.cpm -f $$fmt -b $$sys $@ ; \
+	fi ; \
 	for u in $$(seq 0 15) ; do \
 		dir=d_$$d/u$$u ; \
 		if [ -d $$dir ] ; then \
 			echo " " copying directory $$dir ; \
-			$(CPMCP) -f $$fmt $@ $$($(CASEFN) $$dir/*.*) $$u: ; \
+			for i in $$dir/* ; do \
+				f=$$($(CASEFN) $$i) ; \
+				echo "    " $$f ; \
+				$(CPMCP) -f $$fmt $@ $$f $$u: ; \
+			done ; \
 		fi ; \
 	done ; \
 	if [ -f d_$$d.txt ] ; then \
 		echo " " copying files from d_$$d.txt ; \
 		grep -v ^# d_$$d.txt | tr -d '\r' | while read file user ; do \
-			rf=$$($(CASEFN) $$file) ; \
-			if [ "$$rf" = nofile ] ; then \
+			hack= ; \
+			if [ "$$file" = "../../Binary/Apps/Tunes/*.*" ] ; then hack=../../Binary/Apps/Tunes/Makefile ; fi ; \
+			rf=$$($(CASEFN) $$hack $$file | sort -V) ; \
+			echo "    " $$rf ; \
+			if [ -z "$$rf" ] ; then \
 				echo " " $$file missing ; \
 			else \
 				$(CPMCP) -f $$fmt $@ $$rf $$user ; \
 			fi ; \
 		done ; \
 	fi ; \
-	if [ "$$sys" ] ; then \
-		echo copying system $$sys to $@ ; \
-		dd if=$$sys of=$@ conv=notrunc 2>/dev/null ; \
-	fi
 
+
+clean::
+	@rm -f *.ls
+
+imgdiff:
+	@for i in $(FDIMGS) $(HDIMGS) ; do \
+		echo $$i ; \
+		if echo $$i | grep -q ^f ; then \
+			fmt=wbw_fd144 ; \
+		else \
+			fmt=wbw_hd0 ; \
+		fi ; \
+		$(BINDIR)/cpmls -i -f $$fmt $$i > $$i.ls ; \
+		$(BINDIR)/cpmls -i -f $$fmt $(DIFFPATH)/$$i > $$i.diff.ls ; \
+	done \

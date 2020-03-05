@@ -7,7 +7,7 @@
 ***********************************************************************
 
 Wayne Warthen (wwarthen@gmail.com)
-Version 2.9.2-pre.31, 2020-02-18
+Version 2.9.2-pre.33, 2020-02-28
 https://www.retrobrewcomputers.org/
 
 RomWBW is a ROM-based implementation of CP/M-80 2.2 and Z-System for 
@@ -122,6 +122,9 @@ ROM version:
     - FDU.COM
     - XM.COM
     - RTC.COM
+    - FAT.COM
+    - TIMER.COM
+    - INTTEST.COM
 
 UNA Hardware BIOS
 -----------------

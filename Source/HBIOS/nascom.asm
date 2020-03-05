@@ -29,11 +29,6 @@
 ;
 #INCLUDE "std.asm"
 ;
-; *** HACK TO GET THIS TO BUILD UNDER UNA ***
-#IF (BIOS == BIOS_UNA)
-#INCLUDE "hbios.inc"
-#ENDIF
-;
 ; CUSTOMIZATION
 ;
 ABBRERR	.EQU	FALSE		; Choose between long error message and abbreviated error messages.
@@ -512,7 +507,7 @@ ERRORS: .BYTE   "NEXT without FOR",0
         .BYTE   "Out of string space",0
         .BYTE   "String too long",0
         .BYTE   "String formula too complex",0
-        .BYTE   "Can't CONTinue",0
+        .BYTE   "Can",$27,"t CONTinue",0
         .BYTE   "Undefined FN function",0
         .BYTE   "Missing operand",0
         .BYTE   "HEX",0
