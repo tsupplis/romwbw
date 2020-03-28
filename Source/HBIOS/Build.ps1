@@ -110,7 +110,7 @@ $ImgFile = "${OutDir}/${RomName}.img"	# Final name of IMG image (memory loadable
 if ($Platform -eq "UNA") {$Bios = 'una'} else {$Bios = 'wbw'}
 
 # List of RomWBW proprietary apps to imbed in ROM disk.
-$RomApps = "assign","fdu","format","mode","osldr","rtc","survey","syscopy","sysgen","talk","timer","xm","inttest"
+$RomApps = "assign","fdu","format","mode","rtc","survey","syscopy","sysgen","talk","timer","xm","inttest"
 
 ""
 "Building ${RomName} ${ROMSize}KB ROM configuration ${Config} for Z${CPUType}..."
@@ -201,8 +201,8 @@ if ($Platform -ne "UNA")
 
 "Building ${RomSize}KB ${RomName} ROM disk data file..."
 
-# Use the blank ROM disk image to create a working ROM disk image
-Copy-Item $BlankROM $RomDiskFile
+# Create a blank ROM disk image to create a working ROM disk image
+Set-Content -Value ([byte[]](0xE5) * (([int]${RomSize} * 1KB) - 128KB)) -Encoding byte -Path $RomDiskFile
 
 # Copy all files from the appropriate directory to the working ROM disk image
 cpmcp -f $RomFmt $RomDiskFile ../RomDsk/ROM_${RomSize}KB/*.* 0:
