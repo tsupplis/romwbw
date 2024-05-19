@@ -47,7 +47,6 @@ cmdbuf	.equ	$80	; cmd buf is in second half of page zero
 cmdmax	.equ	60	; max cmd len (arbitrary), must be < bufsiz
 bufsiz	.equ	$80	; size of cmd buf
 ;
-;;int_im1	.equ	$FF00	; IM1 vector target for RomWBW HBIOS proxy
 hbx_int		.equ	$FF60	; IM1 vector target for RomWBW HBIOS proxy
 ;
 bid_cur	.equ	-1	; used below to indicate current bank
@@ -132,31 +131,45 @@ start:
 	di
 #endif
 ;
-; Switch to user RAM bank
+; Switch to user RAM bank and establish boot mode
 ;
 #if (BIOS == BIOS_WBW)
+	; Get the boot mode
+	ld	b,BF_SYSPEEK		; HBIOS func: PEEK
+	ld	d,BID_BIOS		; BIOS bank
+	ld	hl,HCB_LOC + HCB_BOOTMODE	; boot mode byte
+	rst	08
+	ld	a,e			; put in A
+	ld	(bootmode),a		; save it
+;
 	ld	b,BF_SYSSETBNK		; HBIOS func: set bank
 	ld	c,BID_USR		; select user bank
 	rst	08			; do it
 	ld	a,c			; previous bank to A
 	ld	(bid_ldr),a		; save previous bank for later
-	;;;bit	7,a			; starting from ROM?
-	cp	BID_IMG0		; ROM startup?
 #endif
 ;
 #if (BIOS == BIOS_UNA)
 	ld	bc,$01FB		; UNA func: set bank
 	ld	de,BID_USR		; select user bank
 	rst	08			; do it
-	ld	(bid_ldr),de		; ... for later
+	ld	(bid_ldr),de		; save previous bank for later
+;
+	ld	a,BM_ROMBOOT		; assume ROM boot
 	bit	7,d			; starting from ROM?
+	jr	z,start1		; if so, skip ahead
+	ld	a,BM_APPBOOT		; else this is APP boot
+start1:
+	ld	(bootmode),a		; save it
 #endif
 ;
 	; For app mode startup, use alternate table
-	ld	hl,ra_tbl		; assume ROM startup
-	jr	z,start1		; if so, ra_tbl OK, skip ahead
-	ld	hl,ra_tbl_app		; not ROM boot, get app tbl loc
-start1:
+	ld	hl,ra_tbl		; assume ROM application table
+	ld	a,(bootmode)		; get boot mode
+	cp	BM_ROMBOOT		; ROM boot?
+	jr	z,start2		; if so, ra_tbl OK, skip ahead
+	ld	hl,ra_tbl_app		; switch to RAM application table
+start2:
 	ld	(ra_tbl_loc),hl		; and overlay pointer
 ;
 ; Copy original page zero into user page zero
@@ -176,9 +189,9 @@ start1:
 ;
 #if (BIOS == BIOS_WBW)
 	; Get the current console unit
-	ld	b,BF_SYSPEEK		; HBIOS func: POKE
+	ld	b,BF_SYSPEEK		; HBIOS func: PEEK
 	ld	d,BID_BIOS		; BIOS bank
-	ld	hl,HCB_LOC + HCB_CONDEV	; Con unit num in HCB
+	ld	hl,HCB_LOC + HCB_CONDEV	; console unit num in HCB
 	rst	08			; do it
 	ld	a,e			; put in A
 	ld	(curcon),a		; save it
@@ -206,6 +219,10 @@ start1:
 	call	nl2			; formatting
 	ld	hl,str_banner		; display boot banner
 	call	pstr			; do it
+	ld	a,(bootmode)		; get app boot flag
+	cp	BM_APPBOOT		; APP boot?
+	ld	hl,str_appboot		; signal application boot mode
+	call	z,pstr			; print if APP boot
 	call	clrbuf			; zero fill the cmd buffer
 ;
 #if ((BIOS == BIOS_WBW) & FPSW_ENABLE)
@@ -398,7 +415,6 @@ conpoll4:
 ;=======================================================================
 ;
 concmd:
-	call	clrled			; clear LEDs
 ;
 #if (DSKYENABLE)
 	call	dsky_highlightkeysoff
@@ -617,7 +633,6 @@ fp_flopboot2:
 #if (DSKYENABLE)
 ;
 dskycmd:
-	call	clrled			; clear LEDs
 ;
 	call	dsky_getkey		; get DSKY key
 	ld	a,e			; put in A
@@ -1474,32 +1489,6 @@ str_s100con	.db	"\r\n\r\nConsole on S100 Bus",0
 ; Utility functions
 ;=======================================================================
 ;
-; Clear LEDs
-;
-clrled:
-#if (BIOS == BIOS_WBW)
-  #if (FPLED_ENABLE)
-	ld	b,BF_SYSSET		; HBIOS SysGet
-	ld	c,BF_SYSSET_PANEL	; ... Panel swiches value
-	ld	l,$00			; all LEDs off
-	rst	08			; do it
-  #endif
-  #if (LEDENABLE)
-    #if (LEDMODE == LEDMODE_STD)
-	ld	a,$FF			; led is inverted
-	out	(LEDPORT),a		; clear led
-    #endif
-    #if (LEDMODE == LEDMODE_RTC)
-	; Bits 0 and 1 of the RTC latch are for the LEDs.
-	ld	a,(HB_RTCVAL)
-	and	~%00000011
-	out	(RTCIO),a		; clear led
-	ld	(HB_RTCVAL),a
-    #endif
-  #endif
-#endif
-	ret
-;
 ; Print string at HL on console, null terminated
 ;
 pstr:
@@ -2315,6 +2304,7 @@ acmd_to		.dw	BOOT_TIMEOUT	; auto cmd timeout
 ;=======================================================================
 ;
 str_banner	.db	PLATFORM_NAME," Boot Loader",0
+str_appboot	.db	" (App Boot)",0
 str_autoboot	.db	"AutoBoot: ",0
 str_prompt	.db	"Boot [H=Help]: ",0
 str_bs		.db	bs,' ',bs,0
@@ -2430,7 +2420,7 @@ ra_ent		.equ	12
 ; be pre-loaded into the currently executing ram bank thereby allowing
 ; those images to be dynamically loaded as well.  To support this
 ; concept, a pseudo-bank called bid_cur is used to specify the images
-; normally found in BID_IMG0.  In romload, this special value will cause
+; normally found in BID_IMG0.  This special value will cause
 ; the associated image to be loaded from the currently executing bank
 ; which will be correct regardless of the load mode.  Images in other
 ; banks (BID_IMG1) will always be loaded directly from ROM.
@@ -2509,6 +2499,7 @@ dma		.dw	0		; address for load
 sps		.dw	0		; sectors per slice
 mediaid		.db	0		; media id
 ;
+bootmode	.db	0		; ROM, APP, or IMG boot
 ra_tbl_loc	.dw	0		; points to active ra_tbl
 bootunit	.db	0		; boot disk unit
 bootslice	.db	0		; boot disk slice
@@ -2523,7 +2514,6 @@ ciocnt		.db	1		; count of char units
 savcon		.db	0		; con save for conpoll
 conpend		.db	$ff		; pending con unit (first <space> pressed)
 #endif
-
 ;
 ;=======================================================================
 ; Pad remainder of ROM Loader

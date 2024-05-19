@@ -50,6 +50,7 @@ echo.
 ::
 
 tasm -t80 -g3 -dCMD hbios_env.asm hbios_env.com hbios_env.lst || exit /b
+zxcc hbios_env
 zxcc hbios_env >hbios_env.cmd
 call hbios_env.cmd
 
@@ -71,7 +72,7 @@ copy ..\Fonts\font*.asm . || exit /b
 
 tasm -t%CPUType% -g3 -dROMBOOT hbios.asm hbios_rom.bin hbios_rom.lst || exit /b
 tasm -t%CPUType% -g3 -dAPPBOOT hbios.asm hbios_app.bin hbios_app.lst || exit /b
-tasm -t%CPUType% -g3 -dIMGBOOT hbios.asm hbios_img.bin hbios_img.lst || exit /b
+::tasm -t%CPUType% -g3 -dIMGBOOT hbios.asm hbios_img.bin hbios_img.lst || exit /b
 
 ::
 :: Build ROM Components
@@ -241,6 +242,7 @@ call Build S100 std || exit /b
 call Build DUO std || exit /b
 call Build HEATH std || exit /b
 call Build EPITX std || exit /b
+call Build NABU std || exit /b
 :: call Build MON std || exit /b
 
 goto :eof
