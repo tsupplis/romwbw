@@ -24,6 +24,8 @@
 ; 20. MON	Jacques Pelletier's Monsputer
 ; 21. STDZ180	Genesis Z180 System
 ; 22. NABU	NABU w/ Les Bird's RomWBW Option Board
+; 23. FZ80	S100 Computers FPGA Z80
+; 
 ;
 ; INCLUDE BUILD VERSION
 ;
@@ -220,6 +222,7 @@ SDMODE_USR	.EQU	10		; USER DEFINED (in sd.asm) (NOT COMPLETE)
 SDMODE_PIO	.EQU	11		; Z80 PIO bitbang
 SDMODE_Z80R	.EQU	12		; Z80 Retro
 SDMODE_EPITX	.EQU	13		; Mini ITX Z180
+SDMODE_FZ80	.EQU	14		; S100 FPGA Z80
 ;
 ; AY SOUND CHIP MODE SELECTIONS
 ;

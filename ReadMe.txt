@@ -1,6 +1,6 @@
 RomWBW ReadMe
 Wayne Warthen (wwarthen@gmail.com)
-17 May 2024
+08 Jul 2024
 
 
 
@@ -122,7 +122,6 @@ Documentation for RomWBW includes:
 -   RomWBW User Guide
 -   RomWBW System Guide
 -   RomWBW Applications
--   RomWBW ROM Applications
 -   RomWBW Errata
 
 

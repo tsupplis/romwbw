@@ -11,11 +11,8 @@ companion documents you should refer to as appropriate:
   of RomWBW.  It includes a reference for the RomWBW HBIOS API
   functions.
 
-* $doc_romapps$ is a reference for the ROM-hosted applications provided
-  with RomWBW including the monitor, programming languages, etc.
-
-* $doc_apps$ is a reference for the OS-hosted proprietary command
-  line applications that were created to enhance RomWBW.
+* $doc_apps$ is a reference for the ROM-hosted and OS-hosted applications
+  created or customized to enhance the operation of RomWBW.
 
 * $doc_catalog$ is a reference for the contents of the disk images
   provided with RomWBW.  It is somewhat out of date at this time.
@@ -264,6 +261,7 @@ is discussed in [Customizing RomWBW].
 | [Heath H8 Z80 System]^10^                                      | H8      | HEATH_std.rom         | 115200        |
 | [EP Mini-ITX Z180]^11^                                         | RCBus?  | EPITX_std.rom         | 115200        |
 | [NABU w/ RomWBW Option Board]^10^                              | NABU    | NABU_std.rom          | 115200        |
+| [S100 FPGA Z80]^9^                                             | S100    | FZ80_std.rom          | 9600          |
 
 | ^1^Designed by Andrew Lynch
 | ^2^Designed by Sergey Kiselev
@@ -390,7 +388,7 @@ At the Boot Loader prompt, you can type `H <enter>` for help.  You
 can type `L <enter>` to list the available built-in ROM applications.
 If your terminal supports ANSI escape sequences, you can try the
 'P' command to play a simple on-screen game.  Instructions for the
-game are found in $doc_romapps$.
+game are found in $doc_apps$.
 
 If all of this seems fine, your ROM has been successfully programmed.
 See the [Boot Loader Operation] section of this document for further
@@ -644,7 +642,7 @@ return to the Boot Loader menu.  If you are interested in creating a
 custom application to run here, review the "usrrom.asm" file in the
 Source/HBIOS folder of the distribution.
 
-Each of the ROM Applications is documented in $doc_romapps$.  Some
+Each of the ROM Applications is documented in $doc_apps$.  Some
 of the applications (such as BASIC) also have their own independent
 manual in the Doc directory of the distribution.  The OSes included
 in the ROM (CP/M 2.2 & Z-System) are described in the Operating Systems
@@ -5891,6 +5889,43 @@ S- MD: TYPE=RAM
 
 `\clearpage`{=latex}
 
+### S100 FPGA Z80
+
+#### ROM Image File:  FZ80_std.rom
+
+|                   |               |
+|-------------------|---------------|
+| Default CPU Speed | 8.000 MHz     |
+| Interrupts        | None          |
+| System Timer      | None          |
+| Serial Default    | 9600 Baud     |
+| Memory Manager    | Z2            |
+| ROM Size          | 0 KB          |
+| RAM Size          | 512 KB        |
+
+##### Supported Hardware (see [Appendix B - Device Summary]):
+
+FP: LEDIO=255
+SSER: IO=52
+SCON: IO=0
+MD: TYPE=RAM
+PPIDE: IO=48, MASTER
+PPIDE: IO=48, SLAVE
+
+
+FP: LEDIO=255
+DS5RTC: RTCIO=104, IO=104
+SSER: IO=52
+SCON: IO=0
+MD: TYPE=RAM
+PPIDE: IO=48, MASTER
+PPIDE: IO=48, SLAVE
+SD: MODE=FZ80, IO=108, UNITS=2
+
+##### Notes:
+
+- Requires matching FPGA code
+
 ## Appendix B - Device Summary
 
 The table below briefly describes each of the possible devices that
@@ -5908,7 +5943,8 @@ may be discovered by RomWBW in your system.
 | CTC       | System   | Zilog Clock/Timer                                      |
 | CVDU      | Video    | MC8563-based Video Display Controller                  |
 | DMA       | System   | Zilog DMA Controller                                   |
-| DS1307    | RTC      | Maxim DS1307 PCF I2C Real-Time Clock w/ NVRAM          |
+| DS5RTC    | RTC      | Maxim DS1305 SPI Real-Time Clock w/ NVRAM              |
+| DS7RTC    | RTC      | Maxim DS1307 PCF I2C Real-Time Clock w/ NVRAM          |
 | DS1501RTC | RTC      | Maxim DS1501/DS1511 Watchdog Real-Time Clock           |
 | DSRTC     | RTC      | Maxim DS1302 Real-Time Clock w/ NVRAM                  |
 | DUART     | Char     | SCC2681 or compatible Dual UART                        |
@@ -5948,6 +5984,7 @@ may be discovered by RomWBW in your system.
 | SN76489   | Sound    | SN76489 Programmable Sound Generator                   |
 | SPK       | Sound    | Bit-bang Speaker                                       |
 | SYQ       | Disk     | Iomega SparQ Drive on PPI                              |
+| SSER      | Char     | Simple Serial Interface                                |
 | TMS       | Video    | TMS9918/38/58 Video Display Controller                 |
 | UART      | Char     | 16C550 Family Serial Interface                         |
 | USB-FIFO  | Char     | FT232H-based ECB USB FIFO                              |
