@@ -783,23 +783,62 @@ the [Disk Images] section of this document.
 
 ### Auto-Submit Batch Files
 
-All of the operating systems supplied with RomWBW have the ability to
-execute a "batch" of commands by creating a batch submission file
-containing the commands to be executed.  The specifics of using
-batch files in a specific operating system is covered in its specific
-documentation.
+All of the operating systems supplied with RomWBW have the ability to 
+execute a "batch" of commands by creating a batch submission file 
+containing the commands to be executed. The mechanism for running 
+commands automatically at startup varies by operating system.  In some 
+cases, it was built into the original operating system.  In other cases,
+I have added this capability in the RomWBW BIOS of the operating 
+system.
 
-At boot, the operating system will look for a specific batch file 
-(`PROFILE.SUB` for CP/M 2.2 and 3) on the boot drive and execute that 
-batch file automatically.  This allows you to automatically customize 
-your operating system with any commands desired at boot.  CP/M 2.2 did 
-not originally have the ability to automatically excute a batch file at 
-boot, but the CBIOS in RomWBW has added this capability.
+In all cases, the file containing the commands to run at startup must
+be on the boot drive (A:).  RomWBW automatically assigns A: to the
+disk slice you choose to boot.  Adding a startup command file to the
+ROM Disk is not recommended because it would require customizing and
+building a new ROM.  Use of bootable disk slices is preferred since
+the startup command files can be added/edited without any special
+system customization.
+
+Here is an overview for each operating system:
+
+- **CP/M 2.2** - Will run PROFILE.SUB as a SUBMIT file if it exists in
+  A: at startup.  Note that original CP/M 2.2 itself did not have this
+  ability -- it was added to the RomWBW CP/M 2.2 BIOS.  The use of SUBMIT
+  files is documented in Section 1.6.7 SUBMIT Command of the CPM Manual 
+  included in the Doc/CPM folder of the RomWBW distribution.
+
+- **Z-System (ZSDOS 1.1)** - Will run run PROFILE.SUB as a SUBMIT file 
+  if it exists in A: at startup.  Works exactly the same as CP/M 2.2.
+  The original Z-System ZSDOS 1.1 did not have this ability -- it was
+  added to the RomWBW Z-System BIOS.  The Z-System documentation does
+  not cover the use of SUBMIT files -- please refer to the CP/M 2.2
+  documentation.
+
+- **NZCOM** - Will run the command STARTZCM at startup.  This is 
+  normally an alias file.  You use SALIAS to edit such files.  Please see 
+  Section 3.1 Creating an Alias of the NZCOM Users Manual included in the 
+  Doc/CPM folder of the RomWBW distribution.  Note that the NZCOM 
+  distribution includes a PROFILE.SUB file.  NZCOM itself is launched from 
+  ZSDOS.  The included PROFILE.SUB accomplishes this.  Do not modify this 
+  file unless you fully understand the NZCOM boot process.
+
+- **CP/M 3** - Will run PROFILE.SUB as a SUBMIT file if it exists in A: 
+  at startup.  This mechanism is built into the CP/M 3 operating system.  
+  Please see Section 4.5 Executing Multiple Commands and Section 5.2.74 
+  Executing the SUBMIT Command of the CPM3 Users Guide included in the 
+  Doc/CPM folder of the RomWBW distribution.
+
+- **ZPM3** - Will run the command STARTZPM at startup.  This is normally
+  an alias file.  You use SALIAS to edit such files.  ZPM3 has no real 
+  documentation.  The NZCOM documentation of STARTZCM is generally correct
+  for ZPM3.
 
 Since RomWBW can utilize many disk slices, it is very easy to create 
 slices for specific workflows (editing, software development, games, 
 etc.). You can then just boot to the slice that is optimized for the 
-task you want to perform.
+task you want to perform.  Each such slice may have its own startup
+command batch file that customizes the environment for the specific
+workflow desired.
 
 ## System Management
 
