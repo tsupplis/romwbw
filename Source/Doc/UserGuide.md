@@ -222,46 +222,46 @@ by RomWBW along with the standard pre-built ROM image(s).  RomWBW does
 allow for the creation of ROM images with custom configurations.  This
 is discussed in [Customizing RomWBW].
 
-| **Description**                                                | **Bus** | **ROM Image File**    | **Baud Rate** |
-|----------------------------------------------------------------|---------|-----------------------|--------------:|
-| [RetroBrew Z80 SBC]^1^                                         | ECB     | SBC_std.rom           | 38400         |
-| [RetroBrew Z80 SimH]^1^                                        | -       | SBC_simh.rom          | 38400         |
-| [RetroBrew N8 Z180 SBC]^1^ (date code >= 2312)                 | ECB     | N8_std.rom            | 38400         |
-| [Zeta Z80 SBC]^2^, ParPortProp                                 | -       | ZETA_std.rom          | 38400         |
-| [Zeta V2 Z80 SBC]^2^, ParPortProp                              | -       | ZETA2_std.rom         | 38400         |
-| [Mark IV Z180 SBC]^3^                                          | ECB     | MK4_std.rom           | 38400         |
-| [RCBus Z80 CPU Module]^4^, 512K RAM/ROM                        | RCBus   | RCZ80_std.rom         | 115200        |
-| [RCBus Z80 CPU Module]^4^, 512K RAM/ROM, KIO                   | RCBus   | RCZ80_kio.rom         | 115200        |
-| [RCBus Z180 CPU Module]^4^ w/ external banking                 | RCBus   | RCZ180_ext.rom        | 115200        |
-| [RCBus Z180 CPU Module]^4^ w/ native banking                   | RCBus   | RCZ180_nat.rom        | 115200        |
-| [RCBus Z280 CPU Module]^4^ w/ external banking                 | RCBus   | RCZ180_ext.rom        | 115200        |
-| [RCBus Z280 CPU Module]^4^ w/ native banking                   | RCBus   | RCZ180_nat.rom        | 115200        |
-| [Easy Z80 SBC]^2^                                              | RCBus   | RCZ80_easy.rom        | 115200        |
-| [Tiny Z80 SBC]^2^                                              | RCBus   | RCZ80_tiny.rom        | 115200        |
-| [Z80-512K CPU/RAM/ROM Module]^2^                               | RCBus   | RCZ80_skz.rom         | 115200        |
-| [Small Computer SC126 Z180 SBC]^5^                             | BP80    | SCZ180_sc126.rom      | 115200        |
-| [Small Computer SC130 Z180 SBC]^5^                             | RCBus   | SCZ180_sc130.rom      | 115200        |
-| [Small Computer SC131 Z180 Pocket Computer]^5^                 | -       | SCZ180_sc131.rom      | 115200        |
-| [Small Computer SC140 Z180 CPU Module]^5^                      | Z50     | SCZ180_sc140.rom      | 115200        |
-| [Small Computer SC503 Z180 CPU Module]^5^                      | Z50     | SCZ180_sc503.rom      | 115200        |
-| [Small Computer SC700 Z180 CPU Module]^5^                      | RCBus   | SCZ180_sc700.rom      | 115200        |
-| [Dyno Z180 SBC]^6^                                             | Dyno    | DYNO_std.rom          | 38400         |
-| [Nhyodyne Z80 MBC]^1^                                          | MBC     | MBC_std.rom           | 38400         |
-| [Rhyophyre Z180 SBC]^1^                                        | -       | RPH_std.rom           | 38400         |
-| [Z80 ZRC CPU Module]^7^                                        | RCBus   | RCZ80_zrc.rom         | 115200        |
-| [Z80 ZRC CPU Module]^7^ ROMless                                | RCBus   | RCZ80_zrc_ram.rom     | 115200        |
-| [Z80 ZRC512 CPU Module]^7^                                     | RCBus   | RCZ80_zrc512.rom      | 115200        |
-| [Z180 Z1RCC CPU Module]^7^                                     | RCBus   | RCZ180_z1rcc.rom      | 115200        |
-| [Z280 ZZRCC CPU Module]^7^                                     | RCBus   | RCZ280_zzrcc.rom      | 115200        |
-| [Z280 ZZRCC CPU Module]^7^ ROMless                             | RCBus   | RCZ280_zzrcc_ram.rom  | 115200        |
-| [Z280 ZZ80MB SBC]^7^                                           | RCBus   | RCZ280_zz80mb.rom     | 115200        |
-| [Z80-Retro SBC]^8^                                             | -       | Z80RETRO_std.rom      | 38400         |
-| [S100 Computers Z180]^9^                                       | S100    | S100_std.rom          | 57600         |
-| [Duodyne Z80 System]^1^                                        | Duo     | DUO_std.rom           | 38400         |
-| [Heath H8 Z80 System]^10^                                      | H8      | HEATH_std.rom         | 115200        |
-| [EP Mini-ITX Z180]^11^                                         | RCBus?  | EPITX_std.rom         | 115200        |
-| [NABU w/ RomWBW Option Board]^10^                              | NABU    | NABU_std.rom          | 115200        |
-| [S100 FPGA Z80]^9^                                             | S100    | FZ80_std.rom          | 9600          |
+| **Description**                                             | **Bus** | **ROM Image File**           | **Baud Rate** |
+|-------------------------------------------------------------|---------|------------------------------|--------------:|
+| [RetroBrew Z80 SBC]^1^                                      | ECB     | SBC_std.rom                  | 38400         |
+| [RetroBrew Z80 SimH]^1^                                     | -       | SBC_simh.rom                 | 38400         |
+| [RetroBrew N8 Z180 SBC]^1^ (date >= 2312)                   | ECB     | N8_std.rom                   | 38400         |
+| [Zeta Z80 SBC]^2^, ParPortProp                              | -       | ZETA_std.rom                 | 38400         |
+| [Zeta V2 Z80 SBC]^2^, ParPortProp                           | -       | ZETA2_std.rom                | 38400         |
+| [Mark IV Z180 SBC]^3^                                       | ECB     | MK4_std.rom                  | 38400         |
+| [RCBus Z80 CPU Module]^4^, 512K RAM/ROM                     | RCBus   | RCZ80_std.rom                | 115200        |
+| [RCBus Z80 CPU Module]^4^, 512K w/KIO                       | RCBus   | RCZ80_kio_std.rom            | 115200        |
+| [RCBus Z180 CPU Module]^4^ w/ ext banking                   | RCBus   | RCZ180_ext_std.rom           | 115200        |
+| [RCBus Z180 CPU Module]^4^ w/ native banking                | RCBus   | RCZ180_nat_std.rom           | 115200        |
+| [RCBus Z280 CPU Module]^4^ w/ ext banking                   | RCBus   | RCZ180_ext_std.rom           | 115200        |
+| [RCBus Z280 CPU Module]^4^ w/ native banking                | RCBus   | RCZ180_nat_std.rom           | 115200        |
+| [Easy Z80 SBC]^2^                                           | RCBus   | RCZ80_easy_std.rom           | 115200        |
+| [Tiny Z80 SBC]^2^                                           | RCBus   | RCZ80_tiny_std.rom           | 115200        |
+| [Z80-512K CPU/RAM/ROM Module]^2^                            | RCBus   | RCZ80_skz_std.rom            | 115200        |
+| [Small Computer SC126 Z180 SBC]^5^                          | BP80    | SCZ180_sc126_std.rom         | 115200        |
+| [Small Computer SC130 Z180 SBC]^5^                          | RCBus   | SCZ180_sc130_std.rom         | 115200        |
+| [Small Computer SC131 Z180 Pocket Comp]^5^                  | -       | SCZ180_sc131_std.rom         | 115200        |
+| [Small Computer SC140 Z180 CPU Module]^5^                   | Z50     | SCZ180_sc140_std.rom         | 115200        |
+| [Small Computer SC503 Z180 CPU Module]^5^                   | Z50     | SCZ180_sc503_std.rom         | 115200        |
+| [Small Computer SC700 Z180 CPU Module]^5^                   | RCBus   | SCZ180_sc700_std.rom         | 115200        |
+| [Dyno Z180 SBC]^6^                                          | Dyno    | DYNO_std.rom                 | 38400         |
+| [Nhyodyne Z80 MBC]^1^                                       | MBC     | MBC_std.rom                  | 38400         |
+| [Rhyophyre Z180 SBC]^1^                                     | -       | RPH_std.rom                  | 38400         |
+| [Z80 ZRC CPU Module]^7^                                     | RCBus   | RCZ80_zrc_std.rom            | 115200        |
+| [Z80 ZRC CPU Module]^7^ ROMless                             | RCBus   | RCZ80_zrc_ram_std.rom        | 115200        |
+| [Z80 ZRC512 CPU Module]^7^                                  | RCBus   | RCZ80_zrc512_std.rom         | 115200        |
+| [Z180 Z1RCC CPU Module]^7^                                  | RCBus   | RCZ180_z1rcc_std.rom         | 115200        |
+| [Z280 ZZRCC CPU Module]^7^                                  | RCBus   | RCZ280_zzrcc_std.rom         | 115200        |
+| [Z280 ZZRCC CPU Module]^7^ ROMless                          | RCBus   | RCZ280_zzrcc_ram_std.rom     | 115200        |
+| [Z280 ZZ80MB SBC]^7^                                        | RCBus   | RCZ280_zz80mb_std.rom        | 115200        |
+| [Z80-Retro SBC]^8^                                          | -       | Z80RETRO_std.rom             | 38400         |
+| [S100 Computers Z180]^9^                                    | S100    | S100_std.rom                 | 57600         |
+| [Duodyne Z80 System]^1^                                     | Duo     | DUO_std.rom                  | 38400         |
+| [Heath H8 Z80 System]^10^                                   | H8      | HEATH_std.rom                | 115200        |
+| [EP Mini-ITX Z180]^11^                                      | RCBus?  | EPITX_std.rom                | 115200        |
+| [NABU w/ RomWBW Option Board]^10^                           | NABU    | NABU_std.rom                 | 115200        |
+| [S100 FPGA Z80]^9^                                          | S100    | FZ80_std.rom                 | 9600          |
 
 | ^1^Designed by Andrew Lynch
 | ^2^Designed by Sergey Kiselev
@@ -1985,13 +1985,38 @@ new combo disk image.
 
 #### Custom Hard Disk Image
 
-If you want to use specific slices in a specific order, you can easily
-generate a custom hard disk image file.
-
 For hard disks, each .img file represents a single slice (CP/M 
 filesystem).  Since a hard disk can contain many slices, you can just 
 concatenate the slices (.img files) together to create your desired hard
-disk image.  For example, if you want to create a hard disk image that 
+disk image.  
+
+If you look in the Binary directory of the distribution, you will see
+that there are more disk (slice) images than the 6 that are included
+in the "combo" disk images.  These images are identified by looking
+for the files that start with hd1k_ or hd512_.
+
+You can add slices to the combo disk images simply by tacking
+slices onto the end.  For example, if you want to add a slice
+containing the MSX ROMs to the end of the combo image, you could
+use one of the following command lines depending on your operating
+system:
+
+Windows:
+
+`COPY /B hd1k_combo.img + hd1k_msxroms.img my_hd.img` 
+
+Linus/MaxOS:
+
+`cat hd1k_combo.img hd1k_msxroms.img >my_hd.img`
+
+Note that you **must** be sure to use either the hd1k_ or hd512_
+prefixed files together.  You cannot mix them.
+
+If you want to create a completely custom hard disk image that is not
+based on the existing combo image, you can generate a disk image entirely
+from scratch using whatever slices you want in whatever order you like.
+
+For example, if you want to create a hard disk image that 
 has slices for CP/M 2.2, CP/M 3, and WordStar in the hd512 format, you 
 would use the command line of your modern computer to create the final 
 image:
@@ -2353,27 +2378,11 @@ call "ZSYS.SYS".  For example:
   or MAP, you may need to run “RELOG” to get the drive properly 
   recognized by ZSDOS.
 
-* RomWBW fully supports both DateStamper and P2DOS file date/time
-  stamping.  You must load the desired stamping module (`LDDS` for
-  DateStamper or `LDP2D` for P2DOS).  This could be automated using
-  a `PROFILE.SUB` file.  Follow the ZSDOS documentation to initialize
-  a disk for stamping.
-
 * ZSVSTAMP expects to be running under the ZCPR 3.X command processor. 
   By default, RomWBW uses ZCPR 1.0 (intentionally, to reduce space usage) 
   and ZSVSTAMP will just abort in this case. It will work fine if you 
   implement NZCOM. ZSVSTAMP is included solely to facilitate usage 
   if/when you install NZCOM.
-
-* FILEDATE only works with DateStamper style date stamping. If you run 
-  it on a drive that is not initialized for DateStamper, it will complain 
-  `FILEDATE, !!!TIME&.DAT missing`. This is normal and just means that 
-  you have not initialized that drive for DateStamper (using PUTDS).
-
-* ZXD will handle either DateStamper or P2DOS type date stamping. 
-  However, it **must** be configured appropriately. As distributed, it will 
-  look for P2DOS date stamps. Use ZCNFG to reconfigure it for P2DOS if 
-  that is what you are using.
 
 * Many of the tools can be configured (using either ZCNFG or DSCONFIG). 
   The configuration process modifies the actual application file itself. 
@@ -2384,10 +2393,6 @@ call "ZSYS.SYS".  For example:
   needs to be configured first for proper terminal emulation by using 
   SETTERM. So, run SETTERM on DSCONFIG before using DSCONFIG to configure 
   DATSWEEP!
-
-* After using PUTDS to initialize a directory for ZDS date stamping, I 
-  am finding that it is necessary to run RELOG before the stamping 
-  routines will actually start working.
 
 * Generic CP/M PIP and ZSDOS path searching do not mix well if you use 
   PIP to copy to or from a directory in the ZSDOS search path. Best to 
@@ -3087,8 +3092,11 @@ SAMPLE2.TXT ==> 4:/SAMPLE2.TXT ... [OK]
 RomWBW supports a variety of real time clock hardware.  If your
 system has this hardware, then it will be able to maintain the
 current date and time even while your system is turned off.
+
 Additionally, depending on the operating system being used, you may be
 able to utilize date/time stamping of files.
+To facilitate this a CP/M clock driver (WBWCLK) has been included 
+inside `CLOCKS.DAT` that will read the clock via a RomWBW HBIOS call
 
 You can determine if your system has a real time clock present (and
 functioning) by looking at the boot messages.  Here is an example of
@@ -3113,6 +3121,8 @@ update the date/time of the RTC in the RomWBW Boot Loader or Monitor.
 RomwWBW includes two utilities for displaying or setting the date/time
 stored by the RTC.  They are both a bit different and are briefly
 described below.
+
+A third utility `TESTCLOK` is also included as part of ZSDOS
 
 ### WDATE Utility
 
@@ -3193,6 +3203,57 @@ Do **not** enable charging unless you are sure that your system
 supports this.  If your RTC is being powered by a normal battery, it
 would be dangerous to enable charging.
 
+### TESTCLOK Utility
+
+The `TESTCLOK` utility is used to test a selected CPM clock driver 
+loaded from the CLOCKS.DAT file. After selecting the location of CLOCKS.DAT 
+and the clock driver (45. WBWCLK) it displays the currently configured time 
+until a key is pressed. 
+
+```
+A>testclok
+
+TESTCLOK V1.0    Copyright (C) 1988    H.F. Bower / C.W. Cotrill
+
+Extract Clock from Library ([Y]/N) : Y
+Location of CLOCKS.DAT [A0:] : <RETURN> 
+
+  1. ACTRIX             2. ALSPA              3. AMPRO-LB         
+  4. ANLYTCL-PRD        5. AP2-CDZ180         6. AP2-THND/MT      
+  7. AP2-TIMASTR        8. AP2E+PCP-TM        9. AP2E+PCPI        
+ 10. AP2E-THUNDR       11. AP2E-TMASTR       12. BIG-BD-II        
+ 13. BP-BIOS           14. CCS-WALLCLK       15. CPUPRO-SSB1      
+ 16. ELECTR-MFIO       17. EPSON-QX10        18. ETS180IO+        
+ 19. H19-SUPER19       20. H19-ULTRA         21. H19-WATZMAN      
+ 22. H89-BITZERO       23. H89-PC12          24. H89-WIDGET       
+ 25. H89-WISE          26. H89UTI            27. HEATH-BIOS       
+ 28. HOUSEMASTER       29. K83-HOLMES        30. KAYPRO-84        
+ 31. KENMOR-ZTIM       32. KPRO-ADVENT       33. KPRO-LEGACY      
+ 34. MD3-MACK          35. MTN100K-DAY       36. ONEAC-ON!        
+ 37. OTRANA-ATCH       38. P&T-HEARTBT       39. QTSYS-S100       
+ 40. RELATIVE          41. S100-5832         42. SB180-HRTBT      
+ 43. SB180-XBIOS       44. SIMHCLOK          45. WBWCLK           
+ 46. XEROX-820         47. ZSDOS-BIOS       
+
+Enter Clock Driver Selection : 45
+
+..Loading : WBWCLK      ... 
+Linking Clock Module... OK
+RomWBW HBIOS Clock      1.1
+
+RomWBW Series HBIOS Clock
+
+Press any key to quit...
+
+ 19 Oct 2023  14:24:34
+```
+
+Since this runs at the CPM driver level it is useful as an end-to-end test
+to prove that date time stamping is able to read the correct time
+
+The `TESTCLOK` utility is provided by ZSDOS, plese see the ZSDOS Manual 
+for further information
+
 ## Date/Time File Stamping
 
 If an RTC is available in your system, then most operating systems
@@ -3201,10 +3262,16 @@ date/time of file creation, update, and or access in the directory.
 This capability is available in all of the RomWBW operating system
 except the original DRI CP/M 2.2.
 
-In some cases (such as ZSDOS), you must load an RSX (memory resident
-utility) to enable date/time stamping of files.  Additionally, you
-will need to initialize the directory.  The procedure varies in each
-operation system, so you must review the associated documentation.
+Three types of date/time stamping are supported using realtime clock 
+supported by RomWBW HBIOS. DateStamper, NZT and P2DOS.
+
+In some cases (such as ZSDOS), you must load an RSX (memory resident 
+utility) to enable date/time stamping of files. This could be automated 
+using a `PROFILE.SUB` file.
+Preconfigured loaders are provided, bypassing the need to use SETUPZST.
+
+Additionally, you will need to initialize the directory. The procedure varies
+depending on the date/time stamping mechanism, so you must review the associated documentation.
 
 The date/time stamping mechanisms for each operating system are
 generally not compatible.  If you initialize a directory for a type
@@ -3214,6 +3281,71 @@ mechanism.  Doing so may corrupt the directory.
 
 The RomWBW disk images do not have date/time stamping initialized.  This
 is to avoid any chance of directory corruption.
+
+### DateStamper
+
+DateStamper datestamping follows the standard set by Plu*Perfect Systems. 
+This method stores stamps in a disk file named `!!!TIME&.DAT`. 
+Only DateStamper stamping stores full time and date stamps for
+file Creation, Last Modification, and Last Access, 
+and may be used with any CP/M diskette format. In addition, 
+the DateStamper protocol is supported by a mature set of compatible utilities.
+
+Key Utilities
+
+* LDDS.COM - Load DateStamper date/time stamping resident extension. (RomWBW Provided)
+* PUTDS.COM - Prepare disk for DateStamper date/time stamping.
+
+After using PUTDS to initialize a directory for ZDS date stamping,
+it may be necessary to run RELOG before the stamping routines 
+will actually start working.
+
+### P2DOS (CP/M Plus compatible)
+
+CP/M Plus-type datestamping is also widely used due to the popularity 
+of CP/M Plus (also know as CP/M 3). CP/M Plus-type file datestamping uses 
+directory sectors to store file datestamps which may be accessed more quickly 
+by programs, but there is no Last File Access stamp. Finally, the range of 
+utilities for this type of stamps is more limited than for the DateStamper protocol.
+
+Key Utilities
+
+* LDP2D.COM - Load P2DOS date/time stamping resident extension. (RomWBW Provided)
+* INITDIR.COM - Prepares disks for P2DOS-type file stamping.
+
+### NZT
+
+_The use of NZT needs to be further documented_
+
+Key Utilities
+
+* LDNZT.COM - Load NZT date/time stamping resident extension. (RomWBW Provided)
+
+### Additional Notes
+
+The following files have been provided, customised and tested for for use in RomWBW
+
+* `CLOCKS.DAT` - Library of clock drivers, which has been updated to include 
+   the RomWBW clock driver WBWCLK, and also includes the SIMHCLOK clock driver.
+   The file is just a standard LU type library and is easily updated using NULU. 
+   The members are the relocatable binaries, but with the .REL extension removed.
+* `STAMPS.DAT` - Library of available date/time stamping modules for SETUPZST.
+   The file has been replaced with an updated version from the Walnut Creek CP/M CDROM. 
+   The original version has a bug that prevents RSX (resident system extension) mode 
+   to load properly.
+
+Additional Notes
+
+* `SETUPZST` (provided by ZSDOS) Should not normally be needed since the 
+   creation of the appropriate LDTIM loaders has already been performed.
+* `FILEDATE` only works with DateStamper style date stamping. If you run
+   it on a drive that is not initialized for DateStamper, it will complain
+   `FILEDATE, !!!TIME&.DAT missing`. This is normal and just means that
+   you have not initialized that drive for DateStamper (using PUTDS).
+* `ZXD` will handle either DateStamper or P2DOS type date stamping.
+   However, it **must** be configured appropriately. As distributed, it will
+   look for P2DOS date stamps. Use ZCNFG to reconfigure it for P2DOS if
+   that is what you are using.
 
 ## Timezone
 
@@ -4648,7 +4780,7 @@ the RomWBW HBIOS configuration.
 
 `\clearpage`{=latex}
 
-#### ROM Image File:  RCZ80_kio.rom
+#### ROM Image File:  RCZ80_kio_std.rom
 
 |                   |               |
 |-------------------|---------------|
@@ -4691,7 +4823,7 @@ the RomWBW HBIOS configuration.
 
 ### RCBus Z180 CPU Module
 
-#### ROM Image File:  RCZ180_ext.rom
+#### ROM Image File:  RCZ180_ext_std.rom
 
 |                   |               |
 |-------------------|---------------|
@@ -4736,7 +4868,7 @@ the RomWBW HBIOS configuration.
 
 `\clearpage`{=latex}
 
-#### ROM Image File:  RCZ180_nat.rom
+#### ROM Image File:  RCZ180_nat_std.rom
 
 |                   |               |
 |-------------------|---------------|
@@ -4783,7 +4915,7 @@ the RomWBW HBIOS configuration.
 
 ### RCBus Z280 CPU Module
 
-#### ROM Image File:  RCZ280_ext.rom
+#### ROM Image File:  RCZ280_ext_std.rom
 
 |                   |               |
 |-------------------|---------------|
@@ -4826,7 +4958,7 @@ the RomWBW HBIOS configuration.
 
 `\clearpage`{=latex}
 
-#### ROM Image File:  RCZ280_nat.rom
+#### ROM Image File:  RCZ280_nat_std.rom
 
 |                   |               |
 |-------------------|---------------|
@@ -4870,7 +5002,7 @@ the RomWBW HBIOS configuration.
 
 ### Easy Z80 SBC
 
-#### ROM Image File:  RCZ80_easy.rom
+#### ROM Image File:  RCZ80_easy_std.rom
 
 |                   |               |
 |-------------------|---------------|
@@ -4915,7 +5047,7 @@ the RomWBW HBIOS configuration.
 
 ### Tiny Z80 SBC
 
-#### ROM Image File:  RCZ80_tiny.rom
+#### ROM Image File:  RCZ80_tiny_std.rom
 
 |                   |               |
 |-------------------|---------------|
@@ -4959,7 +5091,7 @@ the RomWBW HBIOS configuration.
 
 ### Z80-512K CPU/RAM/ROM Module
 
-#### ROM Image File:  RCZ80_skz.rom
+#### ROM Image File:  RCZ80_skz_std.rom
 
 |                   |               |
 |-------------------|---------------|
@@ -5004,7 +5136,7 @@ the RomWBW HBIOS configuration.
 
 ### Small Computer SC126 Z180 SBC
 
-#### ROM Image File:  SCZ180_sc126.rom
+#### ROM Image File:  SCZ180_sc126_std.rom
 
 |                   |               |
 |-------------------|---------------|
@@ -5052,7 +5184,7 @@ the RomWBW HBIOS configuration.
 
 ### Small Computer SC130 Z180 SBC
 
-#### ROM Image File:  SCZ180_sc130.rom
+#### ROM Image File:  SCZ180_sc130_std.rom
 
 |                   |               |
 |-------------------|---------------|
@@ -5098,9 +5230,9 @@ the RomWBW HBIOS configuration.
 
 `\clearpage`{=latex}
 
-### Small Computer SC131 Z180 Pocket Computer
+### Small Computer SC131 Z180 Pocket Comp
 
-#### ROM Image File:  SCZ180_sc131.rom
+#### ROM Image File:  SCZ180_sc131_std.rom
 
 |                   |               |
 |-------------------|---------------|
@@ -5127,7 +5259,7 @@ the RomWBW HBIOS configuration.
 
 ### Small Computer SC140 Z180 CPU Module
 
-#### ROM Image File:  SCZ180_sc140.rom
+#### ROM Image File:  SCZ180_sc140_std.rom
 
 |                   |               |
 |-------------------|---------------|
@@ -5174,7 +5306,7 @@ the RomWBW HBIOS configuration.
 
 ### Small Computer SC503 Z180 CPU Module
 
-#### ROM Image File:  SCZ180_sc503.rom
+#### ROM Image File:  SCZ180_sc503_std.rom
 
 |                   |               |
 |-------------------|---------------|
@@ -5221,7 +5353,7 @@ the RomWBW HBIOS configuration.
 
 ### Small Computer SC700 Z180 CPU Module
 
-#### ROM Image File:  SCZ180_sc700.rom
+#### ROM Image File:  SCZ180_sc700_std.rom
 
 |                   |               |
 |-------------------|---------------|
@@ -5381,7 +5513,7 @@ S- MD: TYPE=RAM
 
 ### Z80 ZRC CPU Module
 
-#### ROM Image File:  RCZ80_zrc.rom
+#### ROM Image File:  RCZ80_zrc_std.rom
 
 |                   |               |
 |-------------------|---------------|
@@ -5428,7 +5560,7 @@ S- MD: TYPE=RAM
 
 `\clearpage`{=latex}
 
-#### ROM Image File:  RCZ80_zrc_ram.rom
+#### ROM Image File:  RCZ80_zrc_ram_std.rom
 
 |                   |               |
 |-------------------|---------------|
@@ -5475,7 +5607,7 @@ S- MD: TYPE=RAM
 
 ### Z80 ZRC512 CPU Module
 
-#### ROM Image File:  RCZ80_zrc512.rom
+#### ROM Image File:  RCZ80_zrc512_std.rom
 
 |                   |               |
 |-------------------|---------------|
@@ -5522,7 +5654,7 @@ S- MD: TYPE=RAM
 
 ### Z180 Z1RCC CPU Module
 
-#### ROM Image File:  RCZ180_z1rcc.rom
+#### ROM Image File:  RCZ180_z1rcc_std.rom
 
 |                   |               |
 |-------------------|---------------|
@@ -5568,7 +5700,7 @@ S- MD: TYPE=RAM
 
 ### Z280 ZZRCC CPU Module
 
-#### ROM Image File:  RCZ280_zzrcc.rom
+#### ROM Image File:  RCZ280_zzrcc_std.rom
 
 |                   |               |
 |-------------------|---------------|
@@ -5614,7 +5746,7 @@ S- MD: TYPE=RAM
 
 `\clearpage`{=latex}
 
-#### ROM Image File:  RCZ280_zzrcc_ram.rom
+#### ROM Image File:  RCZ280_zzrcc_ram_std.rom
 
 |                   |               |
 |-------------------|---------------|
@@ -5660,7 +5792,7 @@ S- MD: TYPE=RAM
 
 ### Z280 ZZ80MB SBC
 
-#### ROM Image File:  RCZ280_zz80mb.rom
+#### ROM Image File:  RCZ280_zz80mb_std.rom
 
 |                   |               |
 |-------------------|---------------|
@@ -5999,6 +6131,7 @@ may be discovered by RomWBW in your system.
 | INTRTC    | RTC      | Interrupt-based Real Time Clock                        |
 | KBD       | Keyboard | 8242 PS/2 Keyboard Controller                          |
 | KIO       | System   | Zilog Serial/ Parallel Counter/Timer                   |
+| LCD       | System   | Hitachi HD44780-based LCD Display                      |
 | LPT       | Char     | Parallel I/O Controller                                |
 | MD        | Disk     | ROM/RAM Disk                                           |
 | MSXKYB    | Keyboard | MSX Compliant Matrix Keyboard                          |
