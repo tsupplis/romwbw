@@ -12,7 +12,7 @@ export CPUFAM
 if [ "${ROM_PLATFORM}" == "dist" ] ; then
 	echo "!!!DISTRIBUTION BUILD!!!"
 	ROM_PLATFORM="SBC"; ROM_CONFIG="std"; bash Build.sh
-	ROM_PLATFORM="SBC"; ROM_CONFIG="simh"; bash Build.sh
+	ROM_PLATFORM="SBC"; ROM_CONFIG="simh_std"; bash Build.sh
 	ROM_PLATFORM="MBC"; ROM_CONFIG="std"; bash Build.sh
 	ROM_PLATFORM="ZETA"; ROM_CONFIG="std"; bash Build.sh
 	ROM_PLATFORM="ZETA2"; ROM_CONFIG="std"; bash Build.sh
@@ -40,6 +40,7 @@ if [ "${ROM_PLATFORM}" == "dist" ] ; then
 	ROM_PLATFORM="SCZ180"; ROM_CONFIG="sc140_std"; bash Build.sh
 	ROM_PLATFORM="SCZ180"; ROM_CONFIG="sc503_std"; bash Build.sh
 	ROM_PLATFORM="SCZ180"; ROM_CONFIG="sc700_std"; bash Build.sh
+	ROM_PLATFORM="GMZ180"; ROM_CONFIG="std"; bash Build.sh
 	ROM_PLATFORM="DYNO"; ROM_CONFIG="std"; bash Build.sh
 	ROM_PLATFORM="RPH"; ROM_CONFIG="std"; bash Build.sh
 	ROM_PLATFORM="Z80RETRO"; ROM_CONFIG="std"; bash Build.sh

@@ -630,23 +630,24 @@ All character units are assigned a Device Type ID which indicates
 the specific hardware device driver that handles the unit.  The table
 below enumerates these values.
 
-| **Device Type** | **ID** | **Description**                          | **Driver** |
-|-----------------|-------:|------------------------------------------|------------|
-| CIODEV_UART     | 0x00   | 16C550 Family Serial Interface           | uart.asm   |
-| CIODEV_ASCI     | 0x01   | Z180 Built-in Serial Ports               | asci.asm   |
-| CIODEV_TERM     | 0x02   | Terminal                                 | ansi.asm   |
-| CIODEV_PRPCON   | 0x03   | PropIO Serial Console Interface          | prp.asm    |
-| CIODEV_PPPCON   | 0x04   | ParPortProp Serial Console Interface     | ppp.asm    |
-| CIODEV_SIO      | 0x05   | Zilog Serial Port Interface              | sio.asm    |
-| CIODEV_ACIA     | 0x06   | MC68B50 Asynchronous Interface           | acia.asm   |
-| CIODEV_PIO      | 0x07   | Zilog Parallel Interface Controller      | pio.asm    |
-| CIODEV_UF       | 0x08   | FT232H-based ECB USB FIFO                | uf.asm     |
-| CIODEV_DUART    | 0x09   | SCC2681 Family Dual UART                 | duart.asm  |
-| CIODEV_Z2U      | 0x0A   | Zilog Z280 Built-in Serial Ports         | z2u.asm    |
-| CIODEV_LPT      | 0x0B   | Parallel I/O Controller                  | lpt.asm    |
-| CIODEV_ESPCON   | 0x0B   | ESP32 VGA Console                        | esp.asm    |
-| CIODEV_ESPSER   | 0x0B   | ESP32 Serial Port                        | esp.asm    |
-| CIODEV_SCON     | 0x0B   | S100 Console                             | scon.asm   |
+| **Device Type** | **ID** | **Description**                          | **Driver**   |
+|-----------------|-------:|------------------------------------------|--------------|
+| CIODEV_UART     | 0x00   | 16C550 Family Serial Interface           | uart.asm     |
+| CIODEV_ASCI     | 0x01   | Z180 Built-in Serial Ports               | asci.asm     |
+| CIODEV_TERM     | 0x02   | Terminal                                 | ansi.asm     |
+| CIODEV_PRPCON   | 0x03   | PropIO Serial Console Interface          | prp.asm      |
+| CIODEV_PPPCON   | 0x04   | ParPortProp Serial Console Interface     | ppp.asm      |
+| CIODEV_SIO      | 0x05   | Zilog Serial Port Interface              | sio.asm      |
+| CIODEV_ACIA     | 0x06   | MC68B50 Asynchronous Interface           | acia.asm     |
+| CIODEV_PIO      | 0x07   | Zilog Parallel Interface Controller      | pio.asm      |
+| CIODEV_UF       | 0x08   | FT232H-based ECB USB FIFO                | uf.asm       |
+| CIODEV_DUART    | 0x09   | SCC2681 Family Dual UART                 | duart.asm    |
+| CIODEV_Z2U      | 0x0A   | Zilog Z280 Built-in Serial Ports         | z2u.asm      |
+| CIODEV_LPT      | 0x0B   | Parallel I/O Controller                  | lpt.asm      |
+| CIODEV_ESPCON   | 0x0B   | ESP32 VGA Console                        | esp.asm      |
+| CIODEV_ESPSER   | 0x0B   | ESP32 Serial Port                        | esp.asm      |
+| CIODEV_SCON     | 0x0B   | S100 Console                             | scon.asm     |
+| CIODEV_EZ80UART | 0x11   | eZ80 Built-in UART0 Interface            | ez80uart.asm | 
 
 Character devices can usually be configured with line characteristics
 such as speed, framing, etc. A word value (16 bit) is used to describe
@@ -847,12 +848,19 @@ more of the defined media types.
 | MID_FD111     | 9      | 8" 1.11M Floppy                            |
 | MID_HD1K      | 10     | Hard Disk (LBA) w/ 1024 directory entries  |
 
+**NOTE**: HBIOS does not actually differentiate between MID_HD512 and
+MID_HD1K.  The use of these two formats is determined by the use of a
+partition table on the media and is implemented by the operating
+system itself.  HBIOS treats all hard disks as raw sectors. See
+[Function 0x18 -- Disk Media (DIOMEDIA)] for more information on the
+Media ID byte returned.
+
 HBIOS supports both Cylinder/Head/Sector (CHS) and Logical Block 
 Addresses (CHS) when locating a sector for I/O (see DIOSEEK function). 
 For devices that are natively CHS (e.g., floppy disk), the HBIOS driver 
 can convert LBA values to CHS values according to the geometry of the 
 current media.  For devices that are natively LBA (e.g., hard disk), the
- HBIOS driver simulates CHS using a fictitious geometry provided by the 
+HBIOS driver simulates CHS using a fictitious geometry provided by the 
 driver (typically 16 sectors per track and 16 heads per cylinder).
 
 ### Function 0x10 -- Disk Status (DIOSTATUS)
@@ -1065,6 +1073,12 @@ Report the Media ID (E) for the for media in the specified Disk Unit
 will be performed.  The Status (A) is a standard HBIOS result code. If 
 there is no media in device, function will return an error status.
 
+**NOTE**: This function will always return MID_HD512 for hard disk
+devices.  MID_HD1K is provided for use internally by operating systems
+that provide different filsystem formats depending on the partition
+table.  This function cannot be used to determine if an HD1K formatted
+partition exists on the hard disk.
+
 ### Function 0x19 -- Disk Define Media (DIODEFMED)
 
 | **Entry Parameters**                   | **Returned Values**                    |
@@ -1098,7 +1112,7 @@ DIOMEDIA function to force this if desired.
 | **Entry Parameters**                   | **Returned Values**                    |
 |----------------------------------------|----------------------------------------|
 | B: 0x1B                                | A: Status                              |
-| C: Disk Unit                           | D: Heads                               |
+| C: Disk Unit                           | D: Heads / LBA                         |
 |                                        | E: Sectors                             |
 |                                        | HL: Cylinder Count                     |
 |                                        | BC: Block Size                         |
@@ -1108,7 +1122,11 @@ device uses LBA mode addressing natively, then the drivers simulated
 geometry will be returned. The Status (A) is a standard HBIOS result 
 code.  If the media is unknown, an error will be returned.
 
-Heads (D) refers to the number of heads per cylinder.  Sectors (E)
+LBA capability is indicated by D:7.  When set, the device is capable
+of LBA addressing.  Refer to [Function 0x12 -- Disk Seek (DIOSEEK)]
+for more information on specifying LBA vs. CHS addresses.
+
+Heads (D:6-0) refers to the number of heads per cylinder.  Sectors (E)
 refers to the number of sectors per track.  Cylinder Count (HL) is the
 total number of cylinders addressable for the media.  Block Size (BC)
 is the number of bytes in one sector.
@@ -1125,14 +1143,15 @@ more than one at a time.  The RTC unit is assigned a Device Type ID
 which indicates the specific hardware device driver that handles the 
 unit.  The table below enumerates these values.
 
-| **Device Type** | **ID** | **Description**                          | **Driver** |
-|-----------------|-------:|------------------------------------------|------------|
-| RTCDEV_DS       | 0x00   | Maxim DS1302 Real-Time Clock w/ NVRAM    | dsrtc.asm  |
-| RTCDEV_BQ       | 0x01   | BQ4845P Real Time Clock                  | bqrtc.asm  |
-| RTCDEV_SIMH     | 0x02   | SIMH Simulator Real-Time Clock           | simrtc.asm |
-| RTCDEV_INT      | 0x03   | Interrupt-based Real Time Clock          | intrtc.asm |
-| RTCDEV_DS7      | 0x04   | Maxim DS1307 PCF I2C RTC w/ NVRAM        | ds7rtc.asm |
-| RTCDEV_RP5      | 0x05   | Ricoh RPC01A Real-Time Clock w/ NVRAM    | rp5rtc.asm |
+| **Device Type** | **ID** | **Description**                          | **Driver**  |
+|-----------------|-------:|------------------------------------------|-------------|
+| RTCDEV_DS       | 0x00   | Maxim DS1302 Real-Time Clock w/ NVRAM    | dsrtc.asm   |
+| RTCDEV_BQ       | 0x01   | BQ4845P Real Time Clock                  | bqrtc.asm   |
+| RTCDEV_SIMH     | 0x02   | SIMH Simulator Real-Time Clock           | simrtc.asm  |
+| RTCDEV_INT      | 0x03   | Interrupt-based Real Time Clock          | intrtc.asm  |
+| RTCDEV_DS7      | 0x04   | Maxim DS1307 PCF I2C RTC w/ NVRAM        | ds7rtc.asm  |
+| RTCDEV_RP5      | 0x05   | Ricoh RPC01A Real-Time Clock w/ NVRAM    | rp5rtc.asm  |
+| RTCDEV_EZ80     | 0x07   | eZ80 on-chip RTC                         | ez80rtc.asm |
 
 The time functions to get and set the time (RTCGTM and RTCSTM) require a
 6 byte date/time buffer in the following format. Each byte is BCD 
@@ -2220,6 +2239,7 @@ The hardware Platform (L) is identified as follows:
 | PLT_Z80RETRO  |15      | Z80 RETRO COMPUTER                      |
 | PLT_S100      |16      | S100 COMPUTERS Z180                     |
 | PLT_DUO       |17      | DUODYNE Z80 SYSTEM                      |
+| PLT_RCEZ80    |24      | RCBUS W/ eZ80                           |
 
 ### Function 0xF2 -- System Set Bank (SYSSETBNK)
 
