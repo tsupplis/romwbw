@@ -404,7 +404,7 @@ aspects of RomWBW itself.
 
 Those that are written specific to RomWBW include: ASSIGN,
 CPUSPD, FDU, FORMAT, FLASH, FDISK80, MODE, RTC, SYSCOPY, 
-TALK, TIMER, and XM.
+TALK, TIMER, XM, and COPYSL.
 
 The CP/M utilities supplied with RomWBW warrant more detailed descriptions, 
 and so are described in some detail in their own section
@@ -896,6 +896,7 @@ incuded within RomWBW may be found with in the Binary/Apps directory.
 | ----------- | :------: | :--------: |
 | ASSIGN      | Yes      | Yes        |
 | CLRDIR      | Yes      | Yes        |
+| COPYSL      | No       | Yes        |
 | CPUSPD      | Yes      | Yes        |
 | FAT         | No       | Yes        |
 | FDISK80     | Yes      | Yes        |
@@ -1203,6 +1204,96 @@ hardware interface code is specific to RomWBW and the application will
 not operate correctly on non-RomWBW systems.
 
 The source code is provided in the RomWBW distribution.
+
+`\clearpage`{=latex}
+
+## COPYSL
+
+| COPYSL              |   |
+| --------------------|---|
+| ROM-based           |No |
+| Disk-based          |Yes|
+
+The purpose of this utility is to allow the copying of whole disk slices
+from one disk slice to another slice
+
+This tool is only supported by RomWBW HBIOS, it uses HDIOS for all its 
+disk IO. UNA UBIOS is not supported by this tool. 
+
+This tool is running on CP/M 2.2 or 3.0 and has access to full 64kb of
+RAM, with a minimum of 48kb TPA
+
+This tool only works with hard disk devices, other media types like 
+floppy, are not supported at this time. This tool works across different 
+hard disk device types, even of different physical type
+
+Both hd1k and hd512 are fully supported, however copying from one layout 
+type to the other is not supported.
+
+During operation data is copied in a single read/write pass, data is not 
+verified by default. If there is a write error, it will be reported, and
+operation will stop.
+
+#### Syntax
+
+This tool operates at the disk level via RomWBW, thus all disk identifiers 
+are in the RomWBW \<disk\>.\<unit\> format.
+
+The syntax (similar to copy) for the command is:
+
+| `COPYSL `*\<destunit\>*[`.`*\<slice\>*]`=`*\<srcunit\>*[`.`*\<slice\>*] [`/`*\<options\>*]
+  
+E.g.
+  
+| COPYSL 3.3=2.10 /U
+
+Means copy from slice 10 on disk 2, onto disk 3 slice 3. This is in unattended
+mode, so you will not be asked to confirm the copy operation.
+
+#### Options
+
+F - Full disk copy. Copies the complete disk slice, all sectors. \
+U - Unattended. Will complete copy without confirmation from the user. \
+V - Verify. Does an additional read and verify after write.
+
+#### Usage
+
+When run COPYSL will perform command line argument validation and display 
+an error if they are illegal. Also any disk IO errors will cause COPYSL
+to exit.
+
+When specifying slice number(s) a check is made that the slice number is 
+valid, i.e. not too large that it would extend past the end of the 
+partition (hd1k), or the end of the media (hd512). For hd512 a check is
+also performed to ensure that the slice would not extend into the first 
+defined partition.
+
+The copy operation will be faster if the source disk has been formatted
+with the CP/M file system, since during copy the CP/M directory is scanned, 
+and unused blocks are not copied. 
+
+If a filesystem is not found, (or the /F option is chosen) all data is 
+copied.
+
+Verification (if option chosen) will do an aditional read (after write)
+and compare the data read matches what was written. This compare is only
+on every 32'nd byte. This is done for efficiency. 
+
+During copy dots "." will be displayed to indicate progress of the copy.
+Each "." represents 16 kBytes of data. Each line of "." 's is 1 mBytes.
+
+#### Notes
+
+This tool has been tested on both SD and CF media types and with hd1k and hd512
+formatted media.
+
+You cannot copy slices between different hard disk formats (hd512 and
+hd1k) because the slices are incompatible.
+
+#### Etymology
+
+The `COPYSL` application was custom written for RomWBW and contributed
+by Mark Pruden.
 
 `\clearpage`{=latex}
 
