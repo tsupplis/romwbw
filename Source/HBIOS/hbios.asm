@@ -105,6 +105,15 @@
 ;
 #DEFINE	HBIOS
 ;
+; IF BUILDING FULL BOOT ROM, INCLUDE INFO MACROS
+;
+#IFDEF ROMBOOT
+  #DEFINE BNKINFO
+  #DEFINE MEMINFO
+  #DEFINE DEVINFO
+  #DEFINE SYSINFO
+#ENDIF
+;
 ; INCLUDE GENERIC STUFF
 ;
 #INCLUDE "std.asm"
@@ -117,12 +126,6 @@ BOOTMODE	.EQU	0
 #IFDEF ROMBOOT
 BOOTMODE	.SET	BM_ROMBOOT
 MODCNT		.SET	MODCNT + 1
-;
-  #DEFINE BNKINFO
-  #DEFINE MEMINFO
-  #DEFINE DEVINFO
-  #DEFINE SYSINFO
-;
 #ENDIF
 ;
 #IFDEF APPBOOT
@@ -454,6 +457,33 @@ CB_BOOTMODE	.DB	BOOTMODE	; HBIOS BOOTMODE
 ;
 CB_HEAP		.DW	0
 CB_HEAPTOP	.DW	0
+;
+; SWITCHES SHADOW COPY (FROM RTC/NVR) START AT $30
+;
+		.FILL	(HCB + $30 - $),0
+;
+; First byte (header) of NVRAM = "W" if fully initialised, or a ststus byte
+; = 0 if no NVRAM detected, or = 1 If NVR exists, but not configured
+CB_SWITCHES	.DB	0		; this byte is set during init
+;
+;   Byte 0: (L)
+;     Bit 7-0 DISK BOOT SLice Number to Boot -> default = 0
+;     Bit 7-0 ROM BOOT (alpha character) Application to boot -> default = "H"
+;   Byte 1: (H)
+;     Bit 7 - ROM/DISK - Rom or Disk Boot -> Default=ROM=1 (BOOT_DEFAULT is Numeric/Alpha)
+;     Bit 6-0 - DISK BOOT Disk Unit to Boot (0-127) -> default = 0
+CB_SWDEFBOOT	.DB	'H'		; (WORD) DEFAULT BOOT NVR OPTIONS. USED By ROMLDR
+		.DB	DBOOT_ROM	; Default Boot - ROM Application
+;
+;   Byte 0: (L)
+;     Bit 7-6 - Reserved
+;     Bit 5 - AUTO BOOT Auto boot, default=false (BOOT_TIMEOUT != -1)
+;     Bit 4 - Reserved
+;     Bit 3-0 - BOOT_TIMEOUT in seconds (0-15) 0=immediate -> default=3
+CB_SWAUTOB	.DB	0		; AUTO BOOT NVR OPTIONS. USED By ROMLDR
+;
+; CHECKSUM
+CB_SWITCHCK	.DB	0		; CHECKSUM (XOR=0), INCLUDES HEADER and CB_VERSION
 ;
 ; STANDARD BANK ID'S START AT $D8. DEFAULT VALUES FOR 512KB SYSTEM WITH NO RESERVED BANKS
 ;
@@ -1766,7 +1796,7 @@ ROMRESUME:
 	EZ80_IO()
 	OUT	(MPGSEL_1),A		; PROG SECOND 16K MMU REGISTER
   #ENDIF
-; 
+;
   #IF (PLATFORM == PLT_DUO)
 	; DUO HAS VARIABLE RAM SIZE.  RAM ALWAYS STARTS AT 2048K.
 	; SETUP COMMON RAM FOR HIGHEST 32K OF RAM BASED ON TOTAL RAM.
@@ -2036,7 +2066,7 @@ HB_START1:				; BNKCALL ARRIVES HERE, BUT NOW RUNNING IN RAM BANK
 ;
 	; NOTIFY THAT WE MADE THE TRANSITION!
 	FPLEDS(DIAG_03)
-	DIAG(2)	
+	DIAG(2)
 ;
 	; RECOVER DATA PASSED PRIOR TO RAM TRANSITION
 	; (HBX_LOC - 1) = BATCOND
@@ -3348,6 +3378,32 @@ IS_REC_M1:
 	CALL	CALLLIST
 ;
 ;--------------------------------------------------------------------------------------------------
+; NV-SWITCH INITITIALISATION
+; Requires functional RTC NVR
+;--------------------------------------------------------------------------------------------------
+;
+NVR_INIT:
+	; Check for the existence of NV RAM by attempting to read a byte
+	LD	B,BF_RTCGETBYT		; GET RTC BYTE
+	LD	C,0			; FIRST Byte address in RTC
+	CALL	RTC_DISPATCH		; CALL RTC
+	JR	NZ,NVR_INIT_END		; GET BYTE Failed; Noting to do, HCB is correct. Status =0
+	;
+	CALL	NVSW_READ		; read the full data into hcb
+	JR	NZ, NVR_INIT_DEF	; failed to correclty read data
+	;
+	CALL	NVSW_CHECKSUM		; checksum calc into A
+	LD	HL,CB_SWITCHCK		; address of HCB value
+	CP	(HL)			; compare Caculated Check, with hcb Check Value
+	JR	Z,NVR_INIT_END		; The same so success
+NVR_INIT_DEF:
+	; failed Read or Checksum
+	CALL	NVSW_DEFAULTS		; set defaults into HCB, which include the "W" first byte
+	LD 	HL,CB_SWITCHES		; which is incorrect, need the value of 1
+	LD	(HL),1			; to indicate we while not inited, we do have NVRAM
+NVR_INIT_END:
+;
+;--------------------------------------------------------------------------------------------------
 ; WATCHDOG ACTIVATION
 ;--------------------------------------------------------------------------------------------------
 ;
@@ -4062,8 +4118,11 @@ HB_DISPATCH1:
 	JP	C,VDA_DISPATCH
 	CP	BF_SND + $10		; $50-$5F: SOUND DRIVERS
 	JP	C,SND_DISPATCH
-	CP	BF_SYS			; SKIP TO BF_SYS VALUE AT $F0
-	JR	C,HB_DISPERR		; ERROR IF LESS THAN BF_SYS
+	; GAP TO E0
+	CP	BF_EXT			; SKIP TO BF_EXT VALUE AT $E0
+	JR	C,HB_DISPERR		; ERROR IF LESS THAN BF_EXT
+	CP	BF_EXT + $10		; $E0-$EF: EXTENDED
+	JP	C,EXT_DISPATCH
 	JP	SYS_DISPATCH		; OTHERWISE SYS CALL
 	; FALL THRU
 ;
@@ -4139,7 +4198,7 @@ CIO_SETCRT:
 	POP	AF			; RESTORE AF
 	LD	(CB_CRTDEV),A		; SAVE CRT DEV NUM
 	RET				; AND DONE
-;	
+;
 CIO_SETCRT_Z:
 	POP	AF			; RESTORE AF
 	RET				; AND DONE
@@ -4724,6 +4783,19 @@ SND_BEEP_DISP:
 	RET
 ;
 ;--------------------------------------------------------------------------------------------------
+;   EXTENDED FUNCTION DISPATCHER
+;--------------------------------------------------------------------------------------------------
+;
+;   B: FUNCTION
+;
+EXT_DISPATCH:
+	LD	A,B			; GET REQUESTED FUNCTION
+	AND	$0F			; ISOLATE SUB-FUNCTION
+	JP	Z,EXT_SLICE		; $E0
+	DEC	A
+	JP	HB_DISPERR		; ERROR COULD NOT FIND FUNCTION
+;
+;--------------------------------------------------------------------------------------------------
 ;   SYSTEM FUNCTION DISPATCHER
 ;--------------------------------------------------------------------------------------------------
 ;
@@ -4758,6 +4830,7 @@ SYS_DISPATCH:
 	DEC	A
 	JP	Z,SYS_INT		; $FC
 	DEC	A
+	JP	HB_DISPERR		; ERROR COULD NOT FIND FUNCTION
 ;
 HB_DISP_END	.EQU	$
 ;
@@ -4858,6 +4931,299 @@ Z280_IVT:
 #ENDIF
 ;
 HB_Z280IVT_END	.EQU	$
+;
+;==================================================================================================
+; EXTENSION API FUNCTIONS
+;==================================================================================================
+;
+HB_EXTAPI_BEG	.EQU	$
+;
+;--------------------------------------------------------------------------------------------------
+; SLICE CALCULATE - GET DISK EXTENDED HARD DISK MEDIA INFORMATION
+;--------------------------------------------------------------------------------------------------
+;   This function is specificly intended for Hard Drives, where it will scan
+;   the partition table and return a Media ID, including hd1k (MID_HDNEW).
+;   It will also return the absolute LBA offset of the first sector in the slice
+;   If the slice number is invalid (wont fit) the Status will return an error
+;   If the Unit is not a hard disk the Media ID will be returned and slice ignored.
+;--------------------------------------------------------------------------------------------------
+;   ENTRY:
+;     B: FUNCTION       0xE0   EXT_SLICE
+;     D: DISK UNIT, preferably for a hard disk.
+;     E: SLICE, ignored if media is not a hard disk
+;   RETURNS:
+;     A: STATUS, -6 (parameter out of range) - if Slice is invalid
+;	Other errors Include ERR_NOUNIT, ERR_NOMEDIA,
+;	If any error is raised the other return values are undefined
+;     B: DEVICE ATTRIBUTES, as reported by DIODEVICE
+;     C: MEDIAID, including MID_HDNEW if hd1k partition is found
+;     DEHL: LBAOFFSET, of Slice if valid, 0 otherwise.
+;--------------------------------------------------------------------------------------------------
+;
+SLICE_SLICE	.DB	0		; SLICE ARGUMENT (E)
+SLICE_UNIT	.DB	0		; UNIT ARGUMENT  (D)
+SLICE_DEVATT	.DB	0		; DEVICE ATTRIBUTES
+SLICE_MID	.DB	0		; DISCOVERED MEDIAID
+;
+SLICE_WRKSTA	.EQU	$
+SLICE_LBAOFF	.FILL 4,0		; START OF PARTITION / SLICE (SECTORS)
+SLICE_LBASIZ	.FILL 4,0		; SIZE OF MEDIA / PARTITION (SECTORS)
+SLICE_SPS	.DW	0		; DISCOVERED SECTORS PER SLICE (16BIT)
+SLICE_FND	.DB	0		; DID WE FIND A NON CPM PARTITION
+SLICE_WRKSIZ	.EQU	$ - SLICE_WRKSTA ; SIZE OF WORKING DATA
+;
+EXT_SLICE:
+	; SAVE CALL ARGUMENTS
+	LD	(SLICE_SLICE),DE	; STORES DE -> SLICE/UNIT PARAMETERS
+
+	; READ DEVICE INFORMATION USING DIODEVICE FUNCTION
+	LD	A,(SLICE_UNIT)
+	LD	C,A			; UNIT ID PARAMETER INTO C
+	LD	B,BF_DIODEVICE		; DRIVER FUNCTION = DISK MEDIA
+	CALL	DIO_DISPATCH		; CALL DIO TO GET DEVICE ATTRIBUTES
+	RET	NZ			; ABORT ON ERROR
+;
+	; DEVICE ATTRIBUTES IN C
+	LD	A,C
+	LD	(SLICE_DEVATT),A	; STORE DEVICE ATTRIBUTES
+;
+	; DETERMINE MEDIA IN DRIVE USING DIOMEDIA FUNCTION
+	LD	A,(SLICE_UNIT)
+	LD	C,A			; UNIT ID PARAMETER INTO C
+	LD	E,1			; ENABLE MEDIA CHECK/DISCOVERY
+	LD	B,BF_DIOMEDIA		; DRIVER FUNCTION = DISK MEDIA
+	CALL	DIO_DISPATCH		; CALL DIO TO GET MEDIAID (RESULT IN E)
+	RET	NZ			; ABORT ON ERROR
+;
+	; CHECK MEDIA TYPE, ONLY HD IS APPLICABLE
+	LD	A,E			; RESULTANT MEDIA ID TO ACCUM
+	LD	(SLICE_MID),A		; INIT VALUE, MAY BE USED LATER
+	OR	A			; SET FLAGS
+	JR	Z,EXT_SLICE1A		; BAIL IF NO MEDIA
+	CP	MID_HD			; IS IT A HARD DISK
+	JR	Z,EXT_SLICE1B		; IS HD, CONTINUE TO PROCESS HD
+;
+	; NOT A HARD DISK, CHECK SLICE = 0
+	LD	A,(SLICE_SLICE)		; GET THE SLICE
+	OR	A			; SET FLAGS
+	JP	NZ,EXT_SLICE5C		; SLICE NOT ZERO - SIGNAL ERROR AND RETURN
+;
+EXT_SLICE1A:
+	; RETURN MEDIA ID (NOT HD) WITH SUCCESS
+	LD	DE,0			; LBA VALUE WILL BE ZERO
+	LD	HL,0
+	JP	EXT_SLICE6A		; RETURN SUCCESS
+;
+EXT_SLICE1B:
+	; FOUND HD, NEED TO PROCESS MBR / PART TABLE
+	; CLEAR WORKING STORAGE
+	LD	HL,SLICE_WRKSTA		; HL SET TO FIRST BYTE
+	LD	(HL),0			; CLEAR FIRST BYTE
+	LD	D,H
+	LD	E,L
+	INC	DE			; DE SET TO SECOND BYTE
+	LD	BC,SLICE_WRKSIZ - 1	; NUMBER OF LDIR COPIES
+	LDIR				; BLOCK COPY TO CLEAR WORKING STORAGE
+;
+	; SEEK TO SECTOR ZERO (MBR TABLE)
+	LD	B,BF_DIOSEEK		; SEEK FUNCTION
+	LD	A,(SLICE_UNIT)		; GET UNIT
+	LD	C,A			; PUT IN C
+	LD	DE,$8000		; LBA SECTOR ZERO
+	LD	HL,0			; ASSUME LBA ACCESS FOR NOW
+	CALL	DIO_DISPATCH		; DO IT
+	RET	NZ			; ABORT ON ERROR
+;
+	; READ SECTOR ZERO (MBR TABLE)
+	LD	B,BF_DIOREAD		; READ FUNCTION
+	LD	A,(SLICE_UNIT)		; GET UNIT
+	LD	C,A			; PUT IN C
+	LD	A,(HB_CURBNK)		; GET CURRENT BANK ID
+	LD	D,A			; PUT IN D
+	LD	E,1			; SECTOR COUNT
+	LD	HL,HB_WRKBUF		; IO BUFFER TO USE
+	CALL	DIO_DISPATCH		; DO IT
+	RET	NZ			; ABORT ON ERROR
+;
+	; CHECK MBR OF DISK TO SEE IF IT HAS A PARTITION TABLE.
+	LD	HL,HB_WRKBUF		; DSKBUF ADR
+	LD	DE,$1FE			; OFFSET TO SIGNATURE
+	ADD	HL,DE			; POINT TO SIGNATURE
+	LD	A,(HL)			; GET FIRST BYTE
+	CP	$55			; CHECK FIRST BYTE
+	JR	NZ,EXT_SLICE3C		; NO MATCH, NO PART TABLE
+	INC	HL			; NEXT BYTE
+	LD	A,(HL)			; GET SECOND BYTE
+	CP	$AA			; CHECK SECOND BYTE
+	JR	NZ,EXT_SLICE3C		; NO MATCH, NO PART TABLE
+;
+	; FOUND PARTITION TABLE - LOOP AND PROCESS PARTITION TABLE
+	LD	HL,HB_WRKBUF		; DSKBUF ADR
+	LD	DE,$1BE+4		; OFFSET OF FIRST ENTRY PART TYPE
+	ADD	HL,DE			; POINT TO IT
+	LD	B,4			; FOUR ENTRIES IN PART TABLE LOOP
+EXT_SLICE2A:
+	LD	A,(HL)			; GET PART TYPE
+	LD	DE,4
+	ADD	HL,DE			; MOVE HL FWD TO GET TO LBA OFFSET
+	CP	$2E			; CP/M PARTITION?
+	JR	Z,EXT_SLICE3B		; HD1K, GRAB THE LBA OFFSET
+	CP	$00			; IS ANOTHER PARTITION TYPE, NOT CPM
+	JR	NZ,EXT_SLICE3A		; OTHER VALID PART TYPE
+EXT_SLICE2B:
+	LD	DE,12			; REMAINING SIZE TO GET TO NEXT PARTITION
+EXT_SLICE2C:
+	ADD	HL,DE			; BUMP TO NEXT PARTITION ENTRY - TYPE
+	DJNZ	EXT_SLICE2A		; LOOP THRU TABLE
+	JR	EXT_SLICE3C		; READ ALL - NO CP/M PARTITION FOUND
+;
+EXT_SLICE3A
+	; FOUND OTHER (NOT CPM) PARTITION
+	LD	A,(SLICE_FND)		; HAVE WE ALREADY FOUND PROCESSED NON CPM
+	OR	A			; PARTITION, AND CAPTURED ITS START SECTOR, SO
+	JR	NZ,EXT_SLICE2B		; IGNORE AND CONTINUTE TO NEXT PARTITION ENTRY
+;
+; NOTE THERE SLIGHT ISSUE HERE THAT WE ONLY CONSIDER THE FIRST NON-CPM PARTITION
+; TO GET THE UPPER SIZE OF MEDIA, IDEALLY WE WOULD CONSIDER ALL, AND TAKE THE LOWEWST
+; STARTING SECTOR - THIS IS A COMPRIMISE - OUT OF SEQUENCE PARTITIONS ARE UNLIKELY.
+;
+	PUSH	BC			; SAVE IT, BEING USED IN PARTITION LOOP
+        LD      BC,4  			; IF NOT ALREADY SET - COPY 4 BYTES
+        LD      DE,SLICE_LBASIZ		; FROM PARTION LBA OFFSET (HL) - TO WORKING LBA SIZE (DE)
+        LDIR    			; COPY 4 BYTES
+        POP	BC			; RESTORE
+;
+	LD	A,$FF
+	LD	(SLICE_FND),A		; SET FOUND FLAG, SO DONT PROCESS ANY OTHERS
+	LD	DE,8			; AND INC HL BY 8 TO GET TO NEXT PARITION
+	JR	EXT_SLICE2C		; CONTINUE TO NEXT PARTITION
+;
+EXT_SLICE3B:
+	; FOUND CP/M (HD1K) PARTITION - RECORD THIS
+	LD	A,MID_HDNEW		; DISCOVERED HD1K MEDIA
+	LD	(SLICE_MID),A		; STORE IT
+	LD	BC,SPS_HD1K		; DISCOVERED HD1K MEDIA
+	LD	(SLICE_SPS),BC		; STORE IT
+;
+	; CAPTURE THE LBA OFFSET AND SECTOR COUNT FROM PARTITION
+	; HL POINTS TO PART LBA OFFSET FIELD OF PART ENTRY
+	LD	DE,SLICE_LBAOFF		; LOC TO STORE OFFSET AND SIZE
+	LD	BC,8			; 8 BYTES - LBA OFFSET AND SIZE
+	LDIR				; COPY IT
+;
+	JR	EXT_SLICE4A		; CONTINUE AND COMPUTE THE SLICE
+;
+EXT_SLICE3C:
+	; NO PARTITION TABLE FOUND / NO CPM PARTITION
+	LD	A,(SLICE_SLICE)		; IF SLICE = 0, WE BOOT THE DISK ITSELF. IGNORE SLICE(S)
+	OR      A           		; SET FLAGS FOR SLICE ARGUMENT, IF SLICE==0
+	JR	Z,EXT_SLICE5Z		; BYPASS ALL CALCS / CHECKS - JUST BOOT THE DISK
+
+	; BOOT SLICE WITH LEGACY SPS
+	LD	BC,SPS_HD512		; WITH HD512 SECTORS PER SLICE
+	LD	(SLICE_SPS),BC		; STORE IT
+
+	; DID WE FIND AN OTHER (NOT CPM) PARTITION
+	LD	A,(SLICE_FND)		; HAVE WE ALREADY FOUND PROCESSED NON CPM
+	OR	A			; PARTITION, AND CAPTURED ITS START SECTOR, SO
+	JR	NZ,EXT_SLICE4A		; MEDIA SIZE IS KNOWN BASED ON START OF PARTITION
+
+	; FIND THE PHYSICAL CAPCITY OF THE MEDIA CALL (DIOCAP)
+	LD      B,BF_DIOCAP    		; HBIOS FUNC: TO GET DISK LBA CAPACITY
+        LD      A,(SLICE_UNIT)
+	LD      C,A            		; PUT DISK UNIT IN C FOR FUNC CALL
+	CALL	DIO_DISPATCH		; DO IT - RETURNS SIZE in DE:HL
+	RET	NZ			; ABORT ON ERROR
+
+	; UPDATE LBA SIZE FROM MEDIA SIZE
+	LD	(SLICE_LBASIZ),HL	; LOWER ORDER BYTES - HL
+	EX	DE,HL
+	LD	(SLICE_LBASIZ+2),HL	; HIGHER ORDER BYTES - DE
+;
+EXT_SLICE4A:
+	; COMPUTE THE START SECTOR (RELATIVE) FOR SLICE -> DE:HL
+	LD      HL,0			; STARTING SECTOR NUMBER
+	LD      DE,0			; ASSUMING A 0 OFFSET, SO CAN COMPARE TO SIZE
+	LD	BC,(SLICE_SPS)
+	LD	A,(SLICE_SLICE)
+	OR      A           		; SLICE NUMBER - SET FLAGS TO CHECK LOOP CTR
+	JR      Z,EXT_SLICE5A 		; NOTHING TO COUNT
+EXT_SLICE4B:
+	ADD     HL,BC       		; ADD ONE SLICE (SPS) TO LOW WORD
+	JR      NC,EXT_SLICE4C 		; CHECK FOR CARRY
+	INC     DE          		; IF SO, BUMP HIGH WORD
+EXT_SLICE4C:
+	DEC     A           		; DEC LOOP (SLICE) COUNTER
+	JR      NZ,EXT_SLICE4B		; AND LOOP
+;
+EXT_SLICE5A:
+	; DE:HL NOW CONTAINS THE STARTING SECTOR FOR SLICE
+	PUSH    HL			; SAVE THE SECTOR OFFSET (SPS * SLICE NUMBER)
+	PUSH    DE
+;
+	ADD     HL,BC			; ADD SPS, GET REQUIRED CAPCITY (UPPER SECTOR)
+	JR      NC,EXT_SLICE5B
+	INC     DE
+EXT_SLICE5B:
+	; DEHL HAS THE REQUIRED NUMBER OF SECTORS (ON MEDIA) FOR THE SLICE
+	PUSH	DE			; SAVE DSK_REQ (MSW)
+	PUSH	HL			; SAVE DSK_REQ (LSW)
+;
+	; CHECK DSK_CAPACITY >= CAP_REQUIRED, CF SET ON OVERFLOW
+	; NO NEED SAVE ACTUAL RESULT
+	OR	A			; CLEAR CARRY FOR SBC
+	LD	HL,(SLICE_LBASIZ+0)	; CAPACITY LSW
+	POP	DE			; REQUIRED LSW
+	SBC	HL,DE			; CAPACITY - REQUIRED (LSW)
+	LD	HL,(SLICE_LBASIZ+2)	; CAPAITY MSW
+	POP	DE			; REQUIRED MSW
+	SBC	HL,DE			; CAPACITY - REQUIRED (MSW)
+;
+	; POP STARTING OFSETT SECTOR
+	POP     DE
+	POP     HL
+;
+	; REQUIRE - CAPACITY -> GENERATES BORROW IF CAPITY > REQUIREMENT
+	JR      NC,EXT_SLICE6 		; IF WE HAVE ENOUGH CAPACITY
+;
+EXT_SLICE5C:
+	; SLICE WONT FIT - STOP AND RETURN ERROR
+	LD	DE,0
+	LD	HL,0			; EMTY OFFSET IN DEHL
+	LD	A,(SLICE_DEVATT)
+	LD	B,A			; DEVICE ATTRIBUTES IN B
+	LD	A,(SLICE_MID)
+	LD	C,A			; RETURN MEDIA ID IN C
+	LD	A,ERR_RANGE		; OTHERWISE SIGNAL NOT ENOUGH CAPACITY
+	OR      A
+	RET
+;
+EXT_SLICE5Z:
+	LD      HL,0			; BOOT THE DISK TO LBA = 0
+	LD      DE,0			;
+;
+EXT_SLICE6:
+	; FINAL CALC AND RETURN SUCCESS
+	; ADD PARTITION OFFSET (START) TO DEHL TO GET ABSOLUTE SLICE OFFSET
+	LD      BC,(SLICE_LBAOFF+0)	; LSB OF LBA OFFSET
+	ADD     HL,BC			; ADD LSB OFFSET
+	EX      DE,HL			; FLIP DE INTO HL
+	LD      BC,(SLICE_LBAOFF+2)	; MSB OF LBA OFFSET
+	ADC     HL,BC			; ADD MSB
+	EX      DE,HL			; FLIP BACK DE:HL AS SLICE OFFSET
+;
+EXT_SLICE6A:
+	; SLICE FITS - RETURN CORRECTLY
+	LD	A,(SLICE_DEVATT)
+	LD	B,A			; DEVICE ATTRIBUTES IN B
+	LD	A,(SLICE_MID)
+	LD	C,A			; RETURN MEDIA ID IN C
+	XOR     A			; CLEAR FLAGS
+	RET				; RETUNING DE:HL AND C
+;
+;--------------------------------------------------------------------------------------------------
+;
+HB_EXTAPI_END	.EQU	$
 ;
 ;==================================================================================================
 ;   SYSTEM API FUNCTIONS
@@ -5146,6 +5512,11 @@ SYS_GET:
 	JP	Z,SYS_GETDIOCNT
 	CP	BF_SYSGET_DIOFN
 	JP	Z,SYS_GETDIOFN
+	CP	$12		; LEFT FOR BACKWRD COMPATABILITY
+	JP	Z,EXT_SLICE	; FUNCTION MOVED TO TOP LEVEL $E0
+	; REMOVING THE ABOVE CAUSED UPGRADE ISSUES FOR EARLY ADOPTERS
+	; SINCE OS BOOT LOADERS DEPEND ON IT. WITHOUT CAN LEAVE OS
+	; UNBOOTABLE AND MIGRATION HARDER - Oct 2024
 	CP	BF_SYSGET_RTCCNT
 	JP	Z,SYS_GETRTCCNT
 	CP	BF_SYSGET_DSKYCNT
@@ -5158,6 +5529,8 @@ SYS_GET:
 	JP	Z, SYS_GETSNDCNT
 	CP	BF_SYSGET_SNDFN
 	JP	Z,SYS_GETSNDFN
+	CP	BF_SYSGET_SWITCH
+	JP	Z,SYS_GETSWITCH
 	CP	BF_SYSGET_TIMER
 	JP	Z,SYS_GETTIMER
 	CP	BF_SYSGET_SECS
@@ -5310,6 +5683,45 @@ SYS_GETFN:
 	POP	DE			; ... TO DE
 	RET				; AF STILL HAS RESULT OF CALC
 ;
+; GET SWITCH
+;   ON ENTRY:
+;     D: SWITCH KEY
+;	0    -> ILLEGAL / RESERVED
+;	1-FE -> SWITCH
+;	FF   -> DONT GET VALUE CHECK THE STATUS OF NVRAM -> Returning
+;		  A=0   if no NVRAM exists. with NZ flag set
+;		  A=1   if NVRAM is present. with Z flag set
+;		  A='W' if NVRAM is fullly inited. with Z flag set
+;		Note the NZ flag can be used to detect and return an error condition
+;   RETURNS:
+;     HL: SWITCH VALUE 8/16 BIT
+;
+SYS_GETSWITCH:
+;	PUSH	DE
+;	CALL	NVSW_CONFIG		; make sure shadow copy is inited
+;	POP	DE			;
+;	RET	NZ			; Configuration Failed, thus cant continue
+;
+	LD	A,D
+	CP	$FF			; test if want to just get NVRAM status
+	JP	Z,NVSW_STATUS		; Check the Status - Call and Return
+;
+	CALL	SWITCH_RES		; D SWITCH NUMBER -> OUT HL address, E FLAGS
+	RET	NZ			; IF NZ FLAG SET THEN ISSUE
+;
+	LD	B,0			; Clear upper byte
+	LD	C,(HL)			; Get LOW Order Switch Data
+	LD	A,1			; Compare with 1 (byte)
+	CP	E			; Compare The byte count from SWITCH_RES
+	JR	NC,SYS_GETSWITCH2	; 1 byte or less, skip over
+	INC	HL			; next byte pos in a 2 Byte Switch
+	LD	B,(HL)			; Get HIGH Order Switch Data
+;
+SYS_GETSWITCH2:
+	LD	H,B			; retun Result in HL
+	LD	L,C
+	XOR	A			; signal success
+	RET
 #IF ((CPUFAM == CPU_EZ80) & (EZ80TIMER == EZ80TMR_FIRM))
 ; IMPLEMENTED IN EZ80DRV.ASM
 ;
@@ -5538,6 +5950,8 @@ SYS_GETAPPBNKS:
 ;
 SYS_SET:
 	LD	A,C			; GET REQUESTED SUB-FUNCTION
+	CP	BF_SYSSET_SWITCH
+	JP	Z,SYS_SETSWITCH
 	CP	BF_SYSSET_TIMER
 	JP	Z,SYS_SETTIMER
 	CP	BF_SYSSET_SECS
@@ -5550,6 +5964,76 @@ SYS_SET:
 	JP	Z,SYS_SETPANEL
 	SYSCHKERR(ERR_NOFUNC)		; SIGNAL ERROR
 	RET
+;
+; SET SWITCH
+;   ON ENTRY:
+;     D: SWITCH KEY
+;	0 -> ILLEGAL / RESERVED
+;	1-254 -> SWITCH
+;	FF -> REINIT DEFAULT VALUES
+;     HL: SWITCH VALUE 8/16 BIT
+;
+SYS_SETSWITCH:
+	CALL	NVSW_STATUS		; Check the status of NV RAM
+	RET	NZ			; IF NZ then we cant continue, return NZ at this point
+;
+	LD	A,D			; switch # argument
+	CP	$FF			; test if want to reset NVRAM
+	JP	Z,NVSW_RESET		; then perform reset function. CALL AND RETURN
+;
+	LD	B,H			; move value to write into BC
+	LD	C,L
+	CALL	SWITCH_RES		; IN D SWITCH NUMBER -> OUT HL address, E FLAGS
+	RET	NZ			; RETURN IF NZ - swich number illegal
+;
+	LD	(HL),C			; Save LOW Order Switch Data
+	LD	A,1			; Compare with 1 (byte) switch
+	CP	E			; Compare
+	JR	NC,SYS_SETSWITCH1	; 1 byte or less, skip over
+	INC	HL			; next byte pos
+	LD	(HL),B			; Save High Order Switch Data
+;
+SYS_SETSWITCH1:
+	JP	NVSW_UPDATE		; do a write to NVR, CALL AND RETURN
+;
+; Utility function to convert switch number into lookup
+; INPUT
+; 	D SWITCH NUMBER
+; OUTPUT
+; 	E with Byte count (1,2) for switch, or 0 if switch illegal
+; 	HL Memory Address (CB_SWITCHES + offset)
+SWITCH_RES:
+	LD	A,SWITCH_LEN		; lengt of target array (below)
+	CP	D			; check we fit in the loop
+	JR	C,SWITCH_RES1		; overflow table to abort
+;
+	LD	HL,SWITCH_TAB		; Lookup table below
+	LD	A,D			; plus the offset switch number
+	CALL	ADDHLA			; get address of lookup table
+	LD	E,(HL)			; E (OUT) nubmer of bytes in switch
+;
+	LD	HL,CB_SWITCHES		; BASE ADDRESS OF SHADDOW DATA
+	LD	A,D			; Add The offset to the address
+	CALL	ADDHLA			; Final address of Switch Data
+;
+	XOR	A			; signal success
+	RET
+SWITCH_RES1:
+	OR	$FF			; signal failure
+	RET
+;
+; Switch number maps drectly into the HCB data, so to account
+; for double bytes words, we need a table (loopkup)
+; to defines how to map Applicability of Each Swicth Number
+; 0->Cant be Used; 1->Single Byte Value; 2->Double Byte Value
+;
+SWITCH_TAB:
+	.DB	0	; Switch 0 is header, cant be used
+	.DB	2	; Switch 1 - (WORD)
+	.DB	0	; Switch (byte 2) of prior word, not used
+	.DB	1	; Switch 3 - (BYTE)
+	.DB	0	; Last byte is checksum, cant be used
+SWITCH_LEN	.EQU	$ - SWITCH_TAB - 2
 ;
 ; SET BOOT INFORMATION
 ;   ON ENTRY:
@@ -6393,10 +6877,6 @@ HB_TICK1:
 	OUT	(WDOGIO),A		; VALUE IS IRRELEVANT
 #ENDIF
 ;
-#IF MKYENABLE
-	CALL	MKY_INT
-#ENDIF
-;
 	OR	$FF			; NZ SET TO INDICATE INT HANDLED
 	RET
 ;
@@ -7087,6 +7567,128 @@ Z2DMAADR2:
 ;
 #ENDIF
 ;
+;--------------------------------------------------------------------------------------------------
+; ROUTINES FOR NON VOLITILE (NVRAM) SWITCHES
+;--------------------------------------------------------------------------------------------------
+;
+; Return Status
+;  A=0   if no NVRAM exists. with NZ flag set
+;  A=1   if NVRAM is present. with Z flag set
+;  A='W' if NVRAM is fullly inited. with Z flag set
+; Note the NZ flag can be used to detect and return an error condition
+;
+NVSW_STATUS:
+	LD	A,(CB_SWITCHES)		; the status byte
+	LD	B,A			; save it
+	AND	1			; applies to 'W' and $01 status, -> 1
+	CP	1			; set NZ based on A = 1
+	LD	A,B			; return the
+	RET
+;
+; RESET CONTENTS OF NVRAM, STORING INTO
+; RETURN NONZERO IF WRITTEN - ZERO IF NOT WRITTEN
+;
+NVSW_RESET:
+	CALL	NVSW_DEFAULTS		; copy defaults into HCB
+	; Fall Through and Update (write) status
+	; JP	NVSW_UPDATE
+;
+; UPDATE HBIOS SHADOW TO NVRAM, AFTER SETTING HBIOS VALUE
+; RETURN NONZERO IF WRITTEN - ZERO IF NOT WRITTEN
+;
+NVSW_UPDATE:
+	CALL	NVSW_CHECKSUM		; CALC checksum into A
+	LD	(CB_SWITCHCK),A		; store checksum in hcb
+	CALL	NVSW_WRITE		; write the bytes to nvr
+	RET	Z			; Successful write, return
+	; write failed for some reason ???
+	LD	A,1
+	LD	(CB_SWITCHES),A		; ensure hcb signature=1
+	OR	$FF			; failure
+	RET				; return NZ flag
+;
+; PERFORM CHECKSUM CALC OF DATA IN HCB
+; RETURN A REGISTER -> CONTAINING THE CHECKSUM
+;
+NVSW_CHECKSUM:
+	XOR	A
+	LD	B,NVSW_SIZE		; NUMBER OF BYTES TO CHECK
+	LD	HL,CB_SWITCHES		; First Byte in HBIOS (HCB)
+NVSW_CHECKSM1:
+	XOR	(HL)			; XOR The Byte
+	INC	HL			; HL address
+	DJNZ	NVSW_CHECKSM1		; LOOP
+	XOR	RMJ << 4 | RMN		; FIRST BYTE OF VERSION INFO
+	XOR	RUP << 4 | RTP		; SECOND BYTE OF VERSION INFO
+	RET
+;
+; COPY DEFAULTS INTO HCB
+;
+NVSW_DEFAULTS:
+	LD	HL,NVSW_DEFAULT		; Copy default bytes from
+	LD	DE,CB_SWITCHES		; to hbios HCB location
+	LD	BC,NVSW_SIZE		; number of bytes top copy
+	LDIR		 		; copy bytes
+	RET
+;
+; LOAD BYTES FROM NVR - INTO HBIOS DCB
+; RETURN ZERO IF READ SUCCESS, NON-ZERO IF CANT READ
+;
+NVSW_READ:
+	LD	B,NVSW_SIZE + 1		; NUMBER OF BYTES, + 1 for CHECKSUM
+	LD	C,0			; FIRST Byte address in RTC
+	LD	HL,CB_SWITCHES		; First Byte in HBIOS (HCB)
+NVSW_READ1:
+	PUSH	HL			; SAVE ADDRESS
+	PUSH 	BC			; Save Loop counter
+	LD	B,BF_RTCGETBYT		; GET RTC BYTE (at a time), requires loop
+	CALL	RTC_DISPATCH		; CALL RTC
+	POP	BC			; Restore Loop
+	POP	HL			; restore Block pointer
+	RET	NZ			; ERROR JUST RETURN
+	LD	(HL),E			; store IT
+	INC	C			; RTC Byte address
+	INC	HL			; HL address
+	DJNZ	NVSW_READ1		; LOOP to the next byte
+NVSW_READ2:
+	LD	A,(CB_SWITCHES)		; FIRST BYTE
+	CP	'W'			; MUST BE 'W'
+	RET				; ZERO IF OK, NON-ZERO IF ISSUE
+;
+; SAVE BYTES FROM HBIOS DCB - INTO NVR
+; RETURN ZERO IF SUCCESS, NON-ZERO IF CANT WRITE
+;
+NVSW_WRITE:
+	LD	B,NVSW_SIZE + 1		; NUMBER OF BYTES, + 1 for CHECKSUM
+	LD	C,0			; FIRST Byte address in RTC
+	LD	HL,CB_SWITCHES		; First Byte in HBIOS (HCB)
+NVSW_WRITE1:
+	PUSH	HL			; SAVE ADDRESS
+	PUSH 	BC			; Save Loop counter
+	LD	E,(HL)			; Value to Write
+	LD	B,BF_RTCSETBYT		; SET RTC BYTE
+	CALL	RTC_DISPATCH		; CALL RTC
+	POP	BC			; Restore Loop
+	POP	HL			; restore Block pointer
+	RET	NZ			; ERROR JUST RETURN
+	INC	C			; RTC Byte address
+	INC	HL			; HL address
+	DJNZ	NVSW_WRITE1		; LOOP, One Byte at a Time
+NVSW_WRITE2:
+	XOR	A			; SUCCESS
+	RET				; ZERO IF OK, NON-ZERO IF ISSUE
+;
+; DEFAULT VALUES FOR NVRAM, USED TO RESET NVR
+;
+NVSW_DEFAULT:
+	.DB	'W'			; Signature Byte
+	.DB	'H'			; Default Boot - Rom Application [H]elp
+	.DB	DBOOT_ROM		; Default Boot - ROM Application
+	.DB	0			; Auto Boot - NO auto boot
+	; Configure above byte from (BOOT_TIMEOUT != -1)
+; SIZE OF NVR BYTES
+NVSW_SIZE	.EQU 	$ - NVSW_DEFAULT
+;
 HB_INTFUNC_END	.EQU	$
 ;
 ;==================================================================================================
@@ -7381,7 +7983,9 @@ FP_DETECT1:
 	; ATTEMPT TO CONFIRM WE HAVE A VALID PORT.  CREDIT TO STEPHEN
 	; COUSINS FOR THIS APPROACH.
 	LD	C,FPSW_IO		; ADR OF SWITCH PORT
+	EZ80_IO
 	IN	C,(C)			; READ IT USING IN (C)
+	EZ80_IO
 	IN	A,(FPSW_IO)		; READ IT USING IN (PORT)
 	CP	C			; PORT FLOATING ON MISMATCH
 	JR	NZ,FP_DETECT2		; NO H/W, SET FLAG
@@ -7412,7 +8016,7 @@ FP_SETLEDS:
   #ENDIF
 
 	EZ80_IO
-	OUT	(FPLED_IO),A		; WRITE 
+	OUT	(FPLED_IO),A		; WRITE
 FP_SETLEDS1:
 	POP	HL			; RESTORE HL
 	RET				; DONE
@@ -7427,6 +8031,7 @@ FP_GETSWITCHES:
 	LD	A,(FPSW_ACTIVE)		; SWITCHES ACTIVE?
 	OR	A			; SET FLAGS
 	RET	Z			; BAIL OUT IF NOT ACTIVE
+	EZ80_IO
 	IN	A,(FPSW_IO)		; READ SWITCHES
   #IF (FPSW_INV)
 	XOR	$FF			; INVERT BITS IF NEEDED
@@ -9046,6 +9651,7 @@ SLACK		.EQU	BNKTOP - $
 	.ECHO "SYSINIT        \t" \ .ECHO HB_SYSINIT_BEG \ .ECHO "\t" \ .ECHO HB_SYSINIT_END - HB_SYSINIT_BEG \ .ECHO "\n"
 	.ECHO "DISP           \t" \ .ECHO HB_DISP_BEG \ .ECHO "\t" \ .ECHO HB_DISP_END - HB_DISP_BEG \ .ECHO "\n"
 	.ECHO "Z280IVT        \t" \ .ECHO HB_Z280IVT_BEG \ .ECHO "\t" \ .ECHO HB_Z280IVT_END - HB_Z280IVT_BEG \ .ECHO "\n"
+	.ECHO "EXTAPI         \t" \ .ECHO HB_EXTAPI_BEG \ .ECHO "\t" \ .ECHO HB_EXTAPI_END - HB_EXTAPI_BEG \ .ECHO "\n"
 	.ECHO "SYSAPI         \t" \ .ECHO HB_SYSAPI_BEG \ .ECHO "\t" \ .ECHO HB_SYSAPI_END - HB_SYSAPI_BEG \ .ECHO "\n"
 	.ECHO "INTFUNC        \t" \ .ECHO HB_INTFUNC_BEG \ .ECHO "\t" \ .ECHO HB_INTFUNC_END - HB_INTFUNC_BEG \ .ECHO "\n"
 	.ECHO "UTIL           \t" \ .ECHO HB_UTIL_BEG \ .ECHO "\t" \ .ECHO HB_UTIL_END - HB_UTIL_BEG \ .ECHO "\n"

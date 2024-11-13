@@ -3,18 +3,10 @@
 #
 d_nzcom/ReadMe.txt 0:
 #
-# Include selected CP/M 2.2 files
+# Include CP/M 2.2 files
 #
-d_cpm22/u0/ASM.COM 15:
-d_cpm22/u0/LIB.COM 15:
-d_cpm22/u0/LINK.COM 15:
-d_cpm22/u0/LOAD.COM 15:
-d_cpm22/u0/MAC.COM 15:
-#d_cpm22/u0/PIP.COM 15: ???
-d_cpm22/u0/RMAC.COM 15:
-d_cpm22/u0/STAT.COM 15:
 d_cpm22/u0/SUBMIT.COM 0:
-d_cpm22/u0/XSUB.COM 15:
+d_cpm22/u0/*.* 15:
 #
 # Include ZSDOS files
 #
@@ -33,8 +25,9 @@ d_zsdos/u0/*.DAT 15:
 ../../Binary/Apps/bbcbasic.com 15:
 ../../Binary/Apps/bbcbasic.txt 10:
 ../../Binary/Apps/cpuspd.com 15:
-../../Binary/Apps/copysl.com 0:
-../../Binary/Apps/copysl.doc 0:
+../../Binary/Apps/reboot.com 15:
+../../Binary/Apps/copysl.com 15:
+../../Binary/Apps/copysl.doc 10:
 ../../Binary/Apps/fat.com 15:
 ../../Binary/Apps/fdu.com 15:
 ../../Binary/Apps/fdu.doc 10:
@@ -42,6 +35,7 @@ d_zsdos/u0/*.DAT 15:
 ../../Binary/Apps/mode.com 15:
 ../../Binary/Apps/rtc.com 15:
 ../../Binary/Apps/survey.com 15:
+../../Binary/Apps/sysconfig.com 15:
 ../../Binary/Apps/syscopy.com 15:
 ../../Binary/Apps/sysgen.com 15:
 ../../Binary/Apps/talk.com 15:
@@ -62,7 +56,7 @@ d_zsdos/u0/*.DAT 15:
 #
 ../../Binary/Apps/Test/*.com 2:
 ../../Binary/Apps/Test/*.doc 2:
-Test/*.* 2:
+Common/Test/*.* 2:
 #
 # Add Tune sample files
 #
@@ -74,15 +68,21 @@ Test/*.* 2:
 #
 ../ZSDOS/zsys_wbw.sys 0:zsys.sys
 #
+# Add Shared NZCOM/Z3PLUS
+#
+Common/NZ3PLUS/u10/*.* 10:
+Common/NZ3PLUS/u14/*.* 14:
+Common/NZ3PLUS/u15/*.* 15:
+#
 # Add Common Applications
 #
-Common/All/*.* 15:
+Common/All/u10/*.* 10:
+Common/All/u14/*.* 14:
+Common/All/u15/*.* 15:
 Common/CPM22/*.* 15:
-#Common/Z/u10/*.* 10:
 Common/Z/u14/*.* 14:
 Common/Z/u15/*.* 15:
 Common/Z3/u10/*.* 10:
 Common/Z3/u14/*.* 14:
 Common/Z3/u15/*.* 15:
 Common/SIMH/*.* 13:
-Common/UTILS/*.* 15:

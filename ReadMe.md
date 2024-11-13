@@ -3,7 +3,7 @@
 **RomWBW ReadMe** \
 Version 3.5 \
 Wayne Warthen  ([wwarthen@gmail.com](mailto:wwarthen@gmail.com)) \
-27 Sep 2024
+08 Nov 2024
 
 # Overview
 
@@ -198,8 +198,9 @@ let me know if I missed you!
 - Martin R has provided substantial help reviewing and improving the
   User Guide and Applications documents.
 
-- Mark Pruden has also contributed a great deal of content to the User
-  Guide as well as the COPYSL utility.
+- Mark Pruden has also contributed a great deal of content to the Disk
+  Catalog, User Guide as well as contributing the disk image for the
+  Z3PLUS operating system, and the COPYSL utility.
 
 - Jacques Pelletier has contributed the DS1501 RTC driver code.
 
