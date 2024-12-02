@@ -319,7 +319,7 @@ SUPCTS	.EQU	FALSE		; SUPPRESS CTS DURING HBIOS BOOT
 ;
 RTCDEF	.EQU	0			; INIT DEF RTC LATCH VALUE
 ;
-; THE SC126 HAS AN I2C CIRCUIT AND THERE IS NO ASSOCAITED
+; THE SC126 HAS AN I2C CIRCUIT AND THERE IS NO ASSOCIATED
 ; DRIVER, SO WE SET THAT BIT HERE.  IT IS SET FOR ALL OF THE SCXXX
 ; SYSTEMS, BUT IS UNUSED ON ALL BUT THE SC126.  IT DOES NO HARM.
 ;
@@ -2348,7 +2348,7 @@ HB_CPU1:
 ; EARLY DRIVER INITIALIZATION
 ;--------------------------------------------------------------------------------------------------
 ;
-; SOME DRIVERS NEED TO BE CALLED AS EARLY AS WE CAN ONE AN OPERATING
+; SOME DRIVERS NEED TO BE CALLED AS EARLY AS WE CAN ONCE AN OPERATING
 ; ENVIRONMENT IS ESTABLISHED.
 ;
 #IF (CPUFAM == CPU_EZ80)
@@ -2753,7 +2753,7 @@ Z280_TC	.EQU	CPUOSC / 4 / 50 / 2	; TIME CONSTANT
 	LD	(HB_BOOT_REC),A		; SAVE FOR LATER
   #ENDIF
   #IF ((PLATFORM == PLT_SBC) | (PLATFORM == PLT_MBC))
-    #IF (BT_REC_TYPE == BT_REC_SBC01)
+    #IF (BT_REC_TYPE == BT_REC_SBCB0)
 	LD	A,%00100000		; DISABLE RTC AND
 	OUT	(RTCIO),A		; DRQ DRIVER READ
 	IN	A,(RTCIO)		; BIT 0 (DRQ).
@@ -2772,6 +2772,17 @@ SAVE_REC_M:
     #ENDIF
     #IF (BT_REC_TYPE == BT_REC_SBCRI)
 	IN	A,($68 + 6)		; UART_MSR MODEM
+	BIT	6,A			; STATUS REGISTER
+	LD	A,0			; BIT 6
+	JR	Z,SAVE_REC_M		; IS RECOVERY MODE
+	LD	A,1
+SAVE_REC_M:
+	LD	(HB_BOOT_REC),A		; SAVE FOR LATER
+    #ENDIF
+  #ENDIF
+  #IF ((PLATFORM == PLT_DUO)
+    #IF (BT_REC_TYPE == BT_REC_DUORI)
+	IN	A,($78 + 6)		; UART_MSR MODEM
 	BIT	6,A			; STATUS REGISTER
 	LD	A,0			; BIT 6
 	JR	Z,SAVE_REC_M		; IS RECOVERY MODE
@@ -2923,6 +2934,9 @@ NXTMIO:	LD	A,(HL)
 ; DISPLAYED BEFORE INTRODUCING INTERRUPTS.  IF THE SYSTEM CRASHES
 ; AFTER DISPLAYING THE BANNER, INTERRUPT INTEGRITY SHOULD BE SUSPECTED.
 ;
+#IF (BOOT_PRETTY)
+	PRTX(STR_PLT_PRETTY)
+#ENDIF
 	PRTX(STR_BANNER)
 ;
 ; DISPLAY HBIOS MUTEX ENABLED MESSAGE
@@ -3378,7 +3392,7 @@ IS_REC_M1:
 	CALL	CALLLIST
 ;
 ;--------------------------------------------------------------------------------------------------
-; NV-SWITCH INITITIALISATION
+; NV-SWITCH INITIALISATION
 ; Requires functional RTC NVR
 ;--------------------------------------------------------------------------------------------------
 ;
@@ -3393,7 +3407,7 @@ NVR_INIT:
 	JR	NZ, NVR_INIT_DEF	; failed to correclty read data
 	;
 	CALL	NVSW_CHECKSUM		; checksum calc into A
-	LD	HL,CB_SWITCHCK		; address of HCB value
+	LD	HL,CB_SWITCHCK		; address of HCB switch checksum value
 	CP	(HL)			; compare Caculated Check, with hcb Check Value
 	JR	Z,NVR_INIT_END		; The same so success
 NVR_INIT_DEF:
@@ -3804,7 +3818,7 @@ INITSYS4:
 ;
 HB_PCINIT_REC:
 ;
-  #IF ((PLATFORM == PLT_SBC) | (PLATFORM == PLT_MBC))
+  #IF ((PLATFORM == PLT_SBC) | (PLATFORM == PLT_MBC) | (PLATFORM == PLT_DUO))
 	.DW	UART_PREINIT
 ;	.DW	CALLDUMMY
   #ENDIF
@@ -3813,7 +3827,7 @@ HB_PCINITRLEN	.EQU	(($ - HB_PCINIT_REC) / 2)
 ;
 HB_INIT_REC:
 ;
-  #IF ((PLATFORM == PLT_SBC) | (PLATFORM == PLT_MBC))
+  #IF ((PLATFORM == PLT_SBC) | (PLATFORM == PLT_MBC) | (PLATFORM == PLT_DUO))
 	.DW	UART_INIT
 	.DW	MD_INIT
 	.DW	PPIDE_INIT
@@ -5697,14 +5711,9 @@ SYS_GETFN:
 ;     HL: SWITCH VALUE 8/16 BIT
 ;
 SYS_GETSWITCH:
-;	PUSH	DE
-;	CALL	NVSW_CONFIG		; make sure shadow copy is inited
-;	POP	DE			;
-;	RET	NZ			; Configuration Failed, thus cant continue
-;
 	LD	A,D
 	CP	$FF			; test if want to just get NVRAM status
-	JP	Z,NVSW_STATUS		; Check the Status - Call and Return
+	JR	Z,SYS_GETSWITCH3	; Check the Status - Call and Return
 ;
 	CALL	SWITCH_RES		; D SWITCH NUMBER -> OUT HL address, E FLAGS
 	RET	NZ			; IF NZ FLAG SET THEN ISSUE
@@ -5722,6 +5731,20 @@ SYS_GETSWITCH2:
 	LD	L,C
 	XOR	A			; signal success
 	RET
+;
+; Return Status
+;  A=0   if NVRAM does not exist.     with NZ flag set
+;  A=1   if NVRAM exists, not inited. with NZ flag set
+;  A='W' if NVRAM is fully inited.    with  Z flag set
+;
+; Note the NZ flag can be used to detect and return an error condition
+; where the NVRAM is not fully initialised
+;
+SYS_GETSWITCH3:
+	LD	A,(CB_SWITCHES)		; the status byte
+	CP	'W'			; set NZ based on A = W
+	RET
+;
 #IF ((CPUFAM == CPU_EZ80) & (EZ80TIMER == EZ80TMR_FIRM))
 ; IMPLEMENTED IN EZ80DRV.ASM
 ;
@@ -5974,12 +5997,16 @@ SYS_SET:
 ;     HL: SWITCH VALUE 8/16 BIT
 ;
 SYS_SETSWITCH:
-	CALL	NVSW_STATUS		; Check the status of NV RAM
-	RET	NZ			; IF NZ then we cant continue, return NZ at this point
+	LD	A,(CB_SWITCHES)		; Check the basic status of NV RAM
+	CP	0			; no nv ram is present. ( if = 0 )
+	JR	Z,SWITCH_RES1		; then we cant continue, return NZ at this point
 ;
 	LD	A,D			; switch # argument
 	CP	$FF			; test if want to reset NVRAM
 	JP	Z,NVSW_RESET		; then perform reset function. CALL AND RETURN
+;
+	CALL	SYS_GETSWITCH3		; Check the Full status of NV RAM
+	RET	NZ			; is not fully initialised, so return
 ;
 	LD	B,H			; move value to write into BC
 	LD	C,L
@@ -7570,20 +7597,6 @@ Z2DMAADR2:
 ;--------------------------------------------------------------------------------------------------
 ; ROUTINES FOR NON VOLITILE (NVRAM) SWITCHES
 ;--------------------------------------------------------------------------------------------------
-;
-; Return Status
-;  A=0   if no NVRAM exists. with NZ flag set
-;  A=1   if NVRAM is present. with Z flag set
-;  A='W' if NVRAM is fullly inited. with Z flag set
-; Note the NZ flag can be used to detect and return an error condition
-;
-NVSW_STATUS:
-	LD	A,(CB_SWITCHES)		; the status byte
-	LD	B,A			; save it
-	AND	1			; applies to 'W' and $01 status, -> 1
-	CP	1			; set NZ based on A = 1
-	LD	A,B			; return the
-	RET
 ;
 ; RESET CONTENTS OF NVRAM, STORING INTO
 ; RETURN NONZERO IF WRITTEN - ZERO IF NOT WRITTEN
@@ -9455,6 +9468,10 @@ STR_LOWBAT	.DB	"\r\n\r\n+++ LOW BATTERY +++$"
 STR_PANIC	.TEXT	"\r\n>>> PANIC: $"
 STR_SYSCHK	.TEXT	"\r\n>>> SYSCHK: $"
 STR_CONTINUE	.TEXT	"\r\nContinue (Y/N)? $"
+;
+#IF (BOOT_PRETTY)
+#INCLUDE "plt_pretty.inc"
+#ENDIF
 ;
 HB_CURSEC	.DB	0		; CURRENT SECOND (TEMP)
 ;
