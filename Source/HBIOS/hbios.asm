@@ -462,28 +462,28 @@ CB_HEAPTOP	.DW	0
 ;
 		.FILL	(HCB + $30 - $),0
 ;
-; First byte (header) of NVRAM = "W" if fully initialised, or a ststus byte
+; First byte (header) of NVRAM = "W" if fully initialised, or a status byte
 ; = 0 if no NVRAM detected, or = 1 If NVR exists, but not configured
 CB_SWITCHES	.DB	0		; this byte is set during init
 ;
 ;   Byte 0: (L)
-;     Bit 7-0 DISK BOOT SLice Number to Boot -> default = 0
+;     Bit 7-0 DISK BOOT Slice Number to Boot -> default = 0
 ;     Bit 7-0 ROM BOOT (alpha character) Application to boot -> default = "H"
 ;   Byte 1: (H)
-;     Bit 7 - ROM/DISK - Rom or Disk Boot -> Default=ROM=1 (BOOT_DEFAULT is Numeric/Alpha)
+;     Bit 7 - ROM/DISK - Rom or Disk Boot -> Default=ROM=1 (AUTO_CMD is Numeric/Alpha)
 ;     Bit 6-0 - DISK BOOT Disk Unit to Boot (0-127) -> default = 0
-CB_SWDEFBOOT	.DB	'H'		; (WORD) DEFAULT BOOT NVR OPTIONS. USED By ROMLDR
-		.DB	DBOOT_ROM	; Default Boot - ROM Application
+CB_SW_AB_OPT	.DB	'H'		; (WORD) AUTO BOOT NVR OPTIONS. USED By ROMLDR
+		.DB	BOPTS_ROM	; Boot Opts - ROM Application
 ;
 ;   Byte 0: (L)
 ;     Bit 7-6 - Reserved
 ;     Bit 5 - AUTO BOOT Auto boot, default=false (BOOT_TIMEOUT != -1)
 ;     Bit 4 - Reserved
 ;     Bit 3-0 - BOOT_TIMEOUT in seconds (0-15) 0=immediate -> default=3
-CB_SWAUTOB	.DB	0		; AUTO BOOT NVR OPTIONS. USED By ROMLDR
+CB_SW_AB_CFG	.DB	0		; AUTO BOOT NVR CONFIG. USED By ROMLDR
 ;
 ; CHECKSUM
-CB_SWITCHCK	.DB	0		; CHECKSUM (XOR=0), INCLUDES HEADER and CB_VERSION
+CB_SW_CKSUM	.DB	0		; CHECKSUM (XOR=0), INCLUDES HEADER and CB_VERSION
 ;
 ; STANDARD BANK ID'S START AT $D8. DEFAULT VALUES FOR 512KB SYSTEM WITH NO RESERVED BANKS
 ;
@@ -1137,7 +1137,7 @@ HBX_INTSTK	.EQU	$
 ; ---	--------------	--------------  --------------	--------------	--------------
 ; 0	CTC0A		INT1 -+               -+	      -+	HCCARCV -+
 ; 1	CTC0B		INT2  |                |	       |	HCCASND  |
-; 2	CTC0C		TIM0  |                | IM2	       | IM2	NABUKB	 | IM2
+; 2	CTC0C		TIM0  |                | IM2	PS2KBD | IM2	NABUKB	 | IM2
 ; 3	CTC0D		TIM1  |                | INT	       | INT	VDP	 | INT
 ; 4	UART0		DMA0  | Z180	UART0  | VEC	UART0  | VEC	OPTCRD0  | VEC
 ; 5	UART1		DMA1  | CPU	UART1  | GEN	UART1  | GEN	OPTCRD1  | GEN
@@ -2361,7 +2361,7 @@ HB_CPU1:
 	CALL	SN76489_PREINIT
 #ENDIF
 #IF (DSRTCENABLE)
-	; THE DSRTC NEEDS TO BE INITIALIZED IN ORDER TO PERFROM THE
+	; THE DSRTC NEEDS TO BE INITIALIZED IN ORDER TO PERFORM THE
 	; CPU SPEED DETECTION BELOW.
 	CALL	DSRTC_PREINIT
 #ENDIF
@@ -3031,6 +3031,21 @@ HB_SPDTST:
 ; ENABLE INTERRUPTS
 ;--------------------------------------------------------------------------------------------------
 ;
+#IFDEF TESTING
+;
+INTTEST:
+	; TEST TO SEE IF SOMEBODY ENABLED INTS EARLY!
+	LD	A,I
+	JP	PO,INTTEST_Z		; IF PO, INTS DISABLED AS EXPECTED
+	PRTX(STR_INTWARN)		; WARNING
+	JR	INTTEST_Z		; CONTINUE
+;
+STR_INTWARN	.TEXT	"\r\n\r\nWARNING: INTERRUPTS ENABLED TOO EARLY!!!$"
+;
+INTTEST_Z:
+;
+#ENDIF
+;
 	HB_EI				; INTERRUPTS SHOULD BE OK NOW
 ;
 ;--------------------------------------------------------------------------------------------------
@@ -3407,7 +3422,7 @@ NVR_INIT:
 	JR	NZ, NVR_INIT_DEF	; failed to correclty read data
 	;
 	CALL	NVSW_CHECKSUM		; checksum calc into A
-	LD	HL,CB_SWITCHCK		; address of HCB switch checksum value
+	LD	HL,CB_SW_CKSUM		; address of HCB switch checksum value
 	CP	(HL)			; compare Caculated Check, with hcb Check Value
 	JR	Z,NVR_INIT_END		; The same so success
 NVR_INIT_DEF:
@@ -5301,6 +5316,11 @@ SYS_RESWARM:
 ;
 SYS_RESCOLD:
 ;
+; TURN OFF SPURIOUS INTERRUPT SOURCES
+;
+;;;#IF ((INTMODE == 2) & KBDINTS))
+;;;	CALL	KBD_DEINIT		
+;;;#ENDIF
 #IFDEF APPBOOT
 	JP	HB_RESTART
 #ELSE
@@ -5391,8 +5411,8 @@ SYS_RESUSER2:
 ; GET THE CURRENT HBIOS VERSION
 ;   ON INPUT, C=0
 ;   RETURNS VERSION IN DE AS BCD
-;     D: MAJOR VERION IN TOP 4 BITS, MINOR VERSION IN LOW 4 BITS
-;     E: UPDATE VERION IN TOP 4 BITS, PATCH VERSION IN LOW 4 BITS
+;     D: MAJOR VERSION IN TOP 4 BITS, MINOR VERSION IN LOW 4 BITS
+;     E: UPDATE VERSION IN TOP 4 BITS, PATCH VERSION IN LOW 4 BITS
 ;     L: PLATFORM ID
 ;
 SYS_VER:
@@ -7611,7 +7631,7 @@ NVSW_RESET:
 ;
 NVSW_UPDATE:
 	CALL	NVSW_CHECKSUM		; CALC checksum into A
-	LD	(CB_SWITCHCK),A		; store checksum in hcb
+	LD	(CB_SW_CKSUM),A		; store checksum in hcb
 	CALL	NVSW_WRITE		; write the bytes to nvr
 	RET	Z			; Successful write, return
 	; write failed for some reason ???
@@ -7695,8 +7715,8 @@ NVSW_WRITE2:
 ;
 NVSW_DEFAULT:
 	.DB	'W'			; Signature Byte
-	.DB	'H'			; Default Boot - Rom Application [H]elp
-	.DB	DBOOT_ROM		; Default Boot - ROM Application
+	.DB	'H'			; Auto Boot - Rom Application [H]elp
+	.DB	BOPTS_ROM		; Auto Boot - ROM Application
 	.DB	0			; Auto Boot - NO auto boot
 	; Configure above byte from (BOOT_TIMEOUT != -1)
 ; SIZE OF NVR BYTES

@@ -573,14 +573,15 @@ For example, typing `H<enter>` will display a short command summary:
 Boot [H=Help]: h
 
   L           - List ROM Applications
-  D           - Disk Device Inventory
+  D           - Device Inventory
   R           - Reboot System
-  I <u> [<c>] - Set Console Interface/Baud code
+  W           - RomWBW Configure
+  I <u> [<c>] - Set Console Interface/Baud Rate
   V [<n>]     - View/Set HBIOS Diagnostic Verbosity
   <u>[.<s>]   - Boot Disk Unit/Slice
 ```
 
-Likewise the `L` command will display the list of ROM Applications that
+Likewise the `L` command (List ROM Applications) will display the list of ROM Applications that
 you can launch right from the Boot Loader:
 
 ```
@@ -599,6 +600,9 @@ ROM Applications:
   X: XModem Flash Updater
   U: User App
 ```
+
+A more complete description of these options is found below in
+[System Management].
 
 ## Starting Applications from ROM
 
@@ -818,19 +822,25 @@ Here is an overview for each operating system:
   not cover the use of SUBMIT files -- please refer to the CP/M 2.2
   documentation.
 
-- **NZCOM** - Will run the command STARTZCM at startup.  This is 
-  normally an alias file.  You use SALIAS to edit such files.  Please see 
+- **NZCOM** - Will run the command STARTZCM at startup.  This is
+  normally an alias file, which you can edit using SALIAS.  Please see 
   Section 3.1 Creating an Alias of the NZCOM Users Manual included in the 
-  Doc/CPM folder of the RomWBW distribution.  Note that the NZCOM 
-  distribution includes a PROFILE.SUB file.  NZCOM itself is launched from 
-  ZSDOS.  The included PROFILE.SUB accomplishes this.  Do not modify this 
-  file unless you fully understand the NZCOM boot process.
+  Doc/CPM folder of the RomWBW distribution.  Do not modify this 
+  file unless you fully understand the NZCOM boot process. Note that 
+  NZCOM itself is launched from ZSDOS via the included PROFILE.SUB file.
 
 - **CP/M 3** - Will run PROFILE.SUB as a SUBMIT file if it exists in A: 
   at startup.  This mechanism is built into the CP/M 3 operating system.  
   Please see Section 4.5 Executing Multiple Commands and Section 5.2.74 
   Executing the SUBMIT Command of the CPM3 Users Guide included in the 
   Doc/CPM folder of the RomWBW distribution.
+
+- **Z3PLUS** - Will run the command STARTZ3P at startup.  This is
+  normally an alias file, which you can edit using SALIAS.  Please see
+  Section 3.1 Creating an Alias of the Z3PLUS Users Manual included in the
+  Doc/CPM folder of the RomWBW distribution.  Do not modify this
+  file unless you fully understand the Z3PLUS boot process. Note that 
+  Z3PLUS itself is launched from CP/M 3 via the included PROFILE.SUB file.
 
 - **ZPM3** - Will run the command STARTZPM at startup.  This is normally
   an alias file.  You use SALIAS to edit such files.  ZPM3 has no real 
@@ -905,24 +915,24 @@ some limited configuration option options inside this NVRAM.
 Several configuration options are currently supported, these are known as Switches
 
 * Specify Automatic boot at startup, after an optional delay (AB)
-* Define the Default Disk or ROM App to be booted at startup (DB)
+* Define the Disk or ROM App to be booted at for automatic boot (BO)
 
-RomWBW uses bytes located at the start of RTC NVRAM, and includes a Parity check of 
-the bytes in NVRAM to check for authenticity before using the configuration.
+RomWBW uses bytes located at the start of RTC NVRAM, and includes a checksum of 
+the bytes in NVRAM to check for integrity before using the configuration.
 
 Initially NVRAM has to be reset (with default values), before it can be used.
-As well as setting defaults, it also writes the correct parity, and allows the
-NVRAM to be accessed and to store RomWBW config.
+As well as setting defaults, it also writes the correct checksum, and allows the
+NVRAM to be accessed and to store the RomWBW config.
 
-This is an explicit step that must be done, as any existing data stored is overitten.
-If you are using NVRAM for other purposes then you can continue to do so
+This is an explicit step that must be done, as any existing data stored is overwritten.
+If you are using NVRAM for other purposes, then you can continue to do so
 so long as you do NOT perform this Reset step.
 
-NVRAM may also need to be reset in these circumstances
+NVRAM may also need to be reset in these circumstances:
 
 * When there has been a loss of power to the NVRAM.
 * When upgrading to a new RomWBW version, or a RomWBW version that has new switches.
-* If the NVRAM has been overitten by another application.
+* If the NVRAM has been overwritten by another application.
 
 If you want to continue to use NVRAM in your applications you may want to consider storing
 your data above the RomWBW Switch data.
@@ -3877,22 +3887,29 @@ local drives.
 
 ## Network Boot
 
-It is possible to boot your MT011 equipped RomWBW system directly from a
-network server.  This means that the operating system will be loaded 
+It is possible to boot your RomWBW system directly from a
+network server if it has the required hardware.  This means that the operating system will be loaded 
 directly from the network server and all of your drive letters will be 
-provided by the network server.  Duodyne is not yet supported in this 
-mode of operation.
+provided by the network server.  The supported hardware is:
+
+- RCBus System w/ MT011 including:
+  - Featherwing WizNet W5500
+  - SPI FRAM on secondary SPI interface (CS2)
+- Doudyne Disk I/O Board including:
+  - WIZ850io Module
+  - 25LCxxx Serial SPI EEPROM
+  
+Unlike the CP/NET Client, the presence of dedicated non-volatile
+storage is required to hold the network configuration.  This will be
+FRAM (for MT011) or Serial SPI EEPROM (Duodyne).    The NVRAM is used to store your WizNet 
+configuration values so they do not need to be re-entered every time you
+power-cycle your system.
 
 It is important to understand that the operating system that is loaded
 in this case is **not** a RomWBW enhanced operating system.  Some
 commands (such as the `ASSIGN` command) will not be possible.  Also,
 you will only have access to drives provided by the network server --
 no local disk drives will be available.
-
-In order to do this, your MT011 Module **must** be enhanced with an 
-NVRAM SPI FRAM mini-board.  The NVRAM is used to store your WizNet 
-configuration values so they do not need to be re-entered every time you
-power-cycle your system.
 
 Using the same values from the previous example, you would
 issue the `WIZCFG` commands:
@@ -3914,12 +3931,9 @@ contains some files that will be sent to your RomWBW system when the
 Network boot is performed.  By default the directory will be
 `~/NetBoot`.  In this directory you need to place the following files:
 
-* `cpnos-wbw.sys`
+* `cpnos.sys`
 * `ndos.spr`
 * `snios.spr`
-
-All of these files are found in the Binary/CPNET/NetBoot directory of 
-the RomWBW distribution.
 
 You also need to make sure CpnetSocketServer is configured with an 'A' 
 drive and that drive must contain (at an absolute minimum) the following
@@ -3927,12 +3941,15 @@ file:
 
 * `ccp.spr`
 
-which is also found in the Binary/CPNET/NetBoot directory of RomWBW
+All of these files are found in the Binary/CPNET/NetBoot directory of 
+the RomWBW distribution.  You will find 2 sub-directories named MT and
+DUO.  Get the files from the sub-directory corresponding to your
+specific hardware.
 
 Finally, you need to add the following line to your CpnetSocketServer 
 configuration file:
 
-`netboot_default = cpnos-wbw.sys`
+`netboot_default = cpnos.sys`
 
 To perform the network boot, you start your RomWBW system normally which
 should leave you at the Boot Loader prompt.  The 'N' command will

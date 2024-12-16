@@ -531,7 +531,7 @@ The following switch ID's are defined, and described in sections below.
 | Switch Number | Name         | Description                                   |      
 |---------------|--------------|-----------------------------------------------|      
 | 0x00          | -reserved-   | Reserved                                      |      
-| 0x01          | Default Boot | Default boot, either a Rom App or Disk Boot   |      
+| 0x01          | Boot Options | ROM or Disk Boot Settings                     |      
 | 0x02          | -n/a-        | -n/a- high order byte of previous switch      |      
 | 0x03          | Auto Boot    | Automatically boot enabled without user input |
 | 0x04 - 0xFE   | -future-     | Future general usage                          |
@@ -544,18 +544,19 @@ the bytes in NVRAM to check for authenticity before using the configuration.
 |-------------|--------------|-----------------------------------|      
 | 0x00        | Header Byte  | Header Signature Byte 'W'         |      
 | 0x01 - 0x03 | Switch Data  | Actual Switch Data                |      
-| 0x04        | Parity Check | Parity byte to check authenticity |    
+| 0x04        | Parity Check | Checksum byte to check integrity  |    
 
 The above data is copied into the HBIOS Configuration Block (HCB) at startup at 
 the location starting at CB_SWITCHES.
 
-### Default Boot (NVSW_DEFBOOT) 
+### Boot Options (NVSW_BOOTOPTS) 
 
-16 bit Switch defining the default Rom application or Disk device to boot. 
+16 bit Switch defining the ROM application or Disk device to boot if
+automatic booting is enabled.
 
 | Bit 15      | Bits 14-8         | Bits 7-0           |      
 |-------------|-------------------|--------------------|      
-| 1 = Rom App | -undefined-       | App to Boot (Char) |      
+| 1 = ROM App | -undefined-       | App to Boot (Char) |      
 | 0 = Disk    | Disk Unit (0-127) | Disk Slice (0-255) |      
 
 ### Auto Boot (NVSW_AUTOBOOT)
@@ -2382,6 +2383,11 @@ Cold Start (0x02):
   : Perform a system cold start (like a power on).  All devices are
     reinitialized.
 
+User Restart (0x03):
+
+  : Perform a video terminal reset.  Terminal emulation and visual display
+    systems are reset.
+
 The Status (A) is a standard HBIOS result code.
 
 ### Function 0xF1 -- System Version (SYSVER)
@@ -3334,28 +3340,62 @@ placeholder
 
 ### Diagnostic LEDs
 
-Progress through the boot and initialization process can be difficult to monitor 
-due to the lack of console or video output. Access to these output devices does
-not become available until late the in the boot process. If these output devices 
-are also involved with the issue trying to be resolved then trouble shooting is 
-even more difficult.
+Progress through the boot and initialization process can be difficult to 
+monitor due to the lack of console or video output.  Access to these output 
+devices does not become available until late the in the boot process.  If 
+these output devices are also involved with the issue trying to be resolved 
+then trouble shooting is even more difficult.
 
-ROMWBW can be configured to display boot progress with the assistance of additional 
-hardware. This take the form of an LED breakout debugging board connected to an
-8-bit output port. As the boot code executes, the LED output display is updated.
+ROMWBW can be configured to display boot progress with the assistance of 
+additional hardware.  This can take the form of a front panel LED display or 
+LED breakout debugging board connected to an 8-bit output port.  Or it can 
+utilize existing platform status LEDS. 
 
-To use a LED breakout board, it must be connected the computers data, reset and port
-select lines.
+As the boot code executes, the LED output display is updated to indicate the execution progress.
 
-To enable the DIAG option the following settings must be made in the systems .ini
-configuration file, where 0xnn is the port address.
+Platforms that have these capabilities built in have them enabled by default.
 
-DIAGENABLE .SET TRUE
-DIAGPORT   .SET 0xnn
+#### Front Panel display
 
-The following table shows the ROMWBW process steps in relation to the LED display.
+A LED front panel or breakout board needs to be connected the computers data, 
+reset and port select lines.
 
-| **LED**    | **RomWBW Processes**                           |
+To enable this option the following settings can be made in the platforms custom
+configuration file.
+
+```
+FPLED_ENABLE	.SET	TRUE           ; ENABLE FRONT PANEL
+```
+
+Custom hardware can be configured with :
+
+```
+FPLED_IO	.SET	$nn	    	; USE PORT ADDRESS nn
+FPLED_INV	.SET	FALSE		; INVERTED LED BITS
+```
+
+#### Platform Status LEDS
+
+These status LEDs use preexisting status LEDs on each platform.
+
+Enable using:
+
+```
+LEDENABLE	.SET	TRUE            ; ENABLES STATUS LED
+```
+
+Customize using:
+
+```
+LEDMODE		.SET	LEDMODE_STD     ; LEDMODE_[STD|SC|RTC|NABU]
+LEDPORT		.SET	$nn             ; STATUS LED PORT ADDRESS
+```
+
+The following table shows the ROMWBW process steps in relation to the panel
+display.
+
+
+| **PANEL**  | **RomWBW Processes**                           |
 |------------|------------------------------------------------|
 | `........` | Initial boot                                   |
 |            | Jump to start address                          |

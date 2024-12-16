@@ -205,13 +205,17 @@ NABUKBENABLE	.SET	TRUE		; INCLUDE NABU KEYBOARD SUPPORT
 ;======================================================================
 ;
 TMS_PREINIT:
+#IF (TMSKBD == TMSKBD_KBD)
+	LD	IY,TMS_IDAT		; POINTER TO INSTANCE DATA
+	CALL	KBD_PREINIT
+#ENDIF
 	; DISABLE INTERRUPT GENERATION UNTIL AFTER INTERRUPT HANDLER
 	; HAS BEEN INSTALLED.
 	LD	A, (TMS_INITVDU_REG_1)
         RES	TMSINTEN, A             ; RESET INTERRUPT ENABLE BIT
 	LD	(TMS_INITVDU_REG_1), A
         LD	C, TMSCTRL1
-	JP	TMS_SET
+	JP	TMS_SET_X		; SET REG W/O INT MGMT
 ;
 TMS_INIT:
 #IF (CPUFAM == CPU_Z180)
@@ -584,10 +588,18 @@ TMS_READ:
 ;----------------------------------------------------------------------
 ; SET TMS9918 REGISTER VALUE
 ;   TMS_SET WRITES VALUE IN A TO VDU REGISTER SPECIFIED IN C
+;   TMS_SET_X IS A VARIANT THAT DOES NOT DO INT MGMT (TMS_PREINIT)
 ;----------------------------------------------------------------------
 ;
 TMS_SET:
+	; NORMALLY, WE WRAP REG CHANGES WITH DI/EI TO AVOID CONFLICTS
 	HB_DI
+	CALL	TMS_SET_X
+	HB_EI
+	RET
+;
+TMS_SET_X:
+	; ENTRY POINT W/O INT MGMT NEEDED BY TMS_PREINIT
 	EZ80_IO
 	OUT	(TMS_CMDREG),A		; WRITE IT
 	TMS_IODELAY
@@ -596,7 +608,6 @@ TMS_SET:
 	EZ80_IO
 	OUT	(TMS_CMDREG),A		; SELECT THE DESIRED REGISTER
 	TMS_IODELAY
-	HB_EI
 	RET
 ;
 ;----------------------------------------------------------------------
@@ -910,7 +921,7 @@ TMS_XY2IDX:
 	RET				; RETURN
 ;
 ;----------------------------------------------------------------------
-; WRITE VALUE IN A TO CURRENT VDU BUFFER POSTION, ADVANCE CURSOR
+; WRITE VALUE IN A TO CURRENT VDU BUFFER POSITION, ADVANCE CURSOR
 ;----------------------------------------------------------------------
 ;
 TMS_PUTCHAR:
