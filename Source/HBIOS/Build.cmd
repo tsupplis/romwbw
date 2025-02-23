@@ -227,6 +227,7 @@ call Build ZETA2 std || exit /b
 call Build N8 std || exit /b
 call Build MK4 std || exit /b
 call Build RCZ80 std || exit /b
+call Build RCEZ80 std || exit /b
 call Build RCZ80 kio_std || exit /b
 call Build RCZ80 easy_std || exit /b
 call Build RCZ80 tiny_std || exit /b
@@ -234,6 +235,8 @@ call Build RCZ80 skz_std || exit /b
 call Build RCZ80 zrc_std || exit /b
 call Build RCZ80 zrc_ram_std || exit /b
 call Build RCZ80 zrc512_std || exit /b
+call Build RCZ80 ez512_std || exit /b
+call Build RCZ80 k80w_std || exit /b
 call Build RCZ180 ext_std || exit /b
 call Build RCZ180 nat_std || exit /b
 call Build RCZ180 z1rcc_std || exit /b

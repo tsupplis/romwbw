@@ -413,16 +413,12 @@ prompt:
 	call 	dsky_l2on
 #endif
 ;
-	; purge any garbage on the line
-	call	delay			; wait for prompt to be sent
-	ld	b,0			; failsafe max iterations
-purge:
-	call	cst			; anything there?
-	jr	z,wtkey			; if not, move on
-	call	cin			; read and discard
-	djnz	purge			; and loop till no more
+	call	delay			; wait for prompt to be sent?
 ;
 #if (BIOS == BIOS_WBW)
+;
+	call	flush		; flush all char units
+;
   #if (AUTOCON)
 	or	$ff			; initial value
 	ld	(conpend),a		; ... for conpoll routine
@@ -459,6 +455,46 @@ clrbuf1:
 	ret
 ;
 ;=======================================================================
+; Flush queued data from all character units
+;=======================================================================
+;
+; Prior to starting to poll for a console takeover request, we clean
+; out pending data from all character units.  The active console
+; is included.
+;
+#if (BIOS == BIOS_WBW)
+;
+flush:
+	ld	a,(curcon)		; get active console unit
+	push	af			; save it
+	ld	c,0			; char unit index
+;
+flush1:
+	ld	b,0			; loop max failsafe counter
+	ld	a,c			; put char unit in A
+	ld	(curcon),a		; and then make it cur con
+;
+flush2:
+	call	cst			; char waiting?
+	jr	z,flush3		; all done, do next unit
+	call	cin			; get and discard char
+	djnz	flush2			; loop max times
+;
+flush3:
+	inc	c			; next char unit
+	ld	a,(ciocnt)		; get char unit count
+	cp	c			; unit > cnt?
+	jr	c,flush_z		; done
+	jr	flush1			; otherwise, do next char unit
+;
+flush_z:
+	pop	af			; recover active console unit
+	ld	(curcon),a		; and reset to original value
+	ret				; done
+;
+#endif
+;
+;=======================================================================
 ; Poll character units for console takeover request
 ;=======================================================================
 ;
@@ -490,8 +526,15 @@ conpoll1:
 	jr	z,conpoll2		; if no char, move on
 	call	cin			; get char
 	cp	' '			; space char?
-	jr	nz,conpoll2		; if not, move on
+	jr	z,conpoll1a		; if so, handle it
 ;
+	; something other than a <space> was received, clear
+	; the pending console
+	or	$ff			; idle value
+	ld	(conpend),a		; save it
+	jr	conpoll2		; continue checking
+;
+conpoll1a:
 	; a <space> char was typed.  check to see if we just saw a
 	; <space> from this same unit.
 	ld	a,(conpend)		; pending con unit to A
@@ -2465,7 +2508,8 @@ defcmd_len	.equ	$ - defcmd_buf	; len of def boot cmd
 ; Strings
 ;=======================================================================
 ;
-str_banner	.db	PLATFORM_NAME," Boot Loader",0
+str_banner	.db	PLATFORM_NAME
+		.db	" Boot Loader",0
 str_appboot	.db	" (App Boot)",0
 str_autoboot	.db	"\rAutoBoot: ",0
 str_autoact1	.db	"\rAutoBoot in ",0
@@ -2603,7 +2647,7 @@ ra_ent(str_fth,	  'F',	   KY_EX, BID_IMG1, FTH_IMGLOC,  FTH_LOC, FTH_SIZ, FTH_LO
 ra_ent(str_play,  'P',	   $FF,	  BID_IMG1, GAM_IMGLOC,  GAM_LOC, GAM_SIZ, GAM_LOC)
 ra_ent(str_net,   'N',	   $FF,	  BID_IMG1, NET_IMGLOC,  NET_LOC, NET_SIZ, NET_LOC)
 ra_ent(str_upd,   'X',	   $FF,	  BID_IMG1, UPD_IMGLOC,  UPD_LOC, UPD_SIZ, UPD_LOC)
-ra_ent(str_nvr,   'W',	   $FF,	  BID_IMG1, NVR_IMGLOC,  NVR_LOC, NVR_SIZ, NVR_LOC)
+ra_ent(str_nvr,   'W'+$80, $FF,	  BID_IMG1, NVR_IMGLOC,  NVR_LOC, NVR_SIZ, NVR_LOC)
 ra_ent(str_user,  'U',	   $FF,	  BID_IMG1, USR_IMGLOC,  USR_LOC, USR_SIZ, USR_LOC)
 #endif
 #if (DSKYENABLE)
