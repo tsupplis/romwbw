@@ -63,16 +63,28 @@ downloading it to a working directory on your modern computer
 (Windows/Linux/Mac) use any zip tool to extract the contents of the
 archive.
 
-The Binary directory of the distribution contains the pre-built ROM images.  
-Refer to $doc_hardware$ to identify the correct ROM image for your system.
+A complete list of the currently supported platforms is found at the
+beginning of $doc_hardware$.  You must refer to this document to
+identify your hardware and the associated ROM Image.
 
-A complete list of the currently supported platforms is found in
-$doc_hardware$ . You must burn the correct ROM image that matches your hardware
+The Binary directory of the distribution contains the pre-built ROM
+images.  There are many files in the Binary directory, but you
+should be able to locate the ROM Image you identified in 
+$doc_hardware$.  This file which should end in ".rom" must be
+written to your ROM chip.
 
 Once you have a running RomWBW system, you can generally update your ROM
 to a newer version in-situ with the included ROM Flashing tool (Will 
 Sowerbutts' FLASH application) as described in the [Upgrading] chapter
 of this document.
+
+### Disk Loaded ROM Images
+
+Some hardware platforms do not have suffieient ROM capacity for RomWBW.  These
+platforms have their own ROM which can load the RomWBW ROM Image from disk.  The
+platforms that work this way are annotated in $doc_hardware$.  For these
+platforms, you will write a special disk image to the boot disk of your
+system.  The disk image is listed in the "ROM Image File" column.
 
 ## System Startup
 
@@ -83,8 +95,8 @@ be able to boot and check out your system with just the ROM.
 Connect a serial terminal or computer with terminal emulation software 
 to the primary serial port of your CPU board. You may need to refer to 
 your hardware provider's documentation for details. A null-modem 
-connection may be required. Set the baud rate as indicated in the table 
-above. Set the line characteristics to 8 data bits, 1 stop bit, no 
+connection may be required. Set the baud rate as indicated in $doc_hardware$.
+Set the line characteristics to 8 data bits, 1 stop bit, no 
 parity, and no flow control. If possible, select ANSI or VT-100 terminal
 emulation.  Hardware flow control is not required for terminal
 operation, but may be necessary for [Serial Port Transfers].
@@ -340,14 +352,16 @@ enter the command followed by ***\<enter\>***.
 For example, typing `H<enter>` will display a short command summary:
 
 ```
-Boot [H=Help]: h
+Boot [H=Help]: H
 
   L           - List ROM Applications
   D           - Device Inventory
+  S           - Slice Inventory
   R           - Reboot System
   W           - RomWBW Configure
   I <u> [<c>] - Set Console Interface/Baud Rate
   V [<n>]     - View/Set HBIOS Diagnostic Verbosity
+  N           - Network Boot
   <u>[.<s>]   - Boot Disk Unit/Slice
 ```
 
@@ -366,7 +380,6 @@ ROM Applications:
   B: BASIC
   T: Tasty BASIC
   P: Play a Game
-  N: Network Boot
   X: XModem Flash Updater
   U: User App
 ```
@@ -410,7 +423,6 @@ prompt:
 | BASIC             | Microsoft ROM BASIC                                            |
 | Tasty&nbsp;BASIC  | Dimitri Theuling's Tiny BASIC implementation                   |
 | Play              | A simple video game (requires ANSI terminal emulation)         |
-| Network&nbsp;Boot | Boot system via Wiznet MT011 device                            |
 | Flash&nbsp;Update | Upload and flash a new ROMWBW image using xmodem               |
 | User App          | User written application placeholder                           |
 
@@ -833,24 +845,63 @@ disk device performs I/O, the LED will light while the disk is active.
 This is only possible for the first 8 disk units.
 
 The second row of the front panel is composed of switches that allow
-you to control a few aspects of the system startup.
+you to control a few aspects of the system startup. The switches are 
+also re-read during warm boot, so confirm the switch settings are your
+desired boot configuration before executing 'REBOOT /W'.
+ 
+The first two switches affect the device used as the initial console.
+ 
+| CRT/Serial | Sec/Pri | Explanation                                                 |
+|------------|---------|-------------------------------------------------------------|
+| CRT        | Pri     | Primary Cathode Ray Tube device (high speed console)        |
+| CRT        | Sec     | Secondary Cathode Ray Tube device (high speed console)      |
+| Serial     | Pri     | Boot Console is Primary Serial Port                         |
+| Serial     | Sec     | Boot Console is Secondary Serial Port                       |
 
-The first two switches affect the device used as the console initially.
-Setting the CRT/Serial switch will cause the system to boot directly 
-to an attached CRT device (if available).  Setting the Pri/Sec switch 
-will cause the system to boot to the secondary Serial or CRT device 
-(depending on the setting of the first switch).
+If not available (default): "Char Unit 0" is used
 
-The final six switches allow you to cause the system to automatically
-boot into a desired function.  The Auto/Menu switch must be set to
-enable this, otherwise the normal ROM Loader prompt will be used.
-If the Disk/ROM switch is not set, then you can use the last 3
-switches to select a ROM app to auto-start.  If the Disk/ROM switch is
-set, then the system will attempt a disk boot based on the following
-switches.  The Floppy/Hard switch can be used to boot to a Floppy or
-Hard Disk.  In either case, the first Floppy or Hard Disk will be used
-for the boot.  If a Hard Disk boot is selected, then the last three
-switches can be used to select any of the first 8 slices.
+The final six switches allow you to select the desired boot device.
+
++-----------+----------+-------------+--------------------------+-------------------------------------------------+
+|           |          |             | ROM/App/Boot Slice       |                                                 |
+| Auto /    | Disk /   | Floppy /    +--------+--------+--------+-------------------------------------------------+
+| Menu      | ROM      | Hard        |   4    |   2    |   1    | Explanation                                     |
++===========+==========+=============+========+========+========+=================================================+
+| Menu      | --       | --          |   --   |   --   |   --   | Boot to RomWBW Menu                             |
++-----------+----------+-------------+--------+--------+--------+-------------------------------------------------+
+| Auto      | Disk     | Floppy      |   #    |   #    |   #    | Boot Selected Floppy Disk Index                 |
++-----------+----------+-------------+--------+--------+--------+-------------------------------------------------+
+| Auto      | Disk     | Hard        |   #    |   #    |   #    | Boot Selected Hard Disk Index                   |
++-----------+----------+-------------+--------+--------+--------+-------------------------------------------------+
+| Auto      | ROM      | --          |   #    |   #    |   #    | Boot selected ROM Index                         |
++-----------+----------+-------------+--------+--------+--------+-------------------------------------------------+
+
+If not available: Boot Loader Command Prompt \
+'--' Ignored \
+'#' bit flag to select any three bits 4,2,1
+
+ROM or Hard Disk - First 8 Drive Images
+
++-------+-----------------+-----------+
+|       | Floppy / Hard \ |           |
+| 4 2 1 | Drive Index     | ROM Index |
++=======+=================+===========+
+| 0 0 0 |  Zero           | Monitor   |
++-------+-----------------+-----------+
+| 0 0 1 |  One            | BASIC     |
++-------+-----------------+-----------+
+| 0 2 0 |  Two            | Forth     |
++-------+-----------------+-----------+
+| 0 2 1 |  Three          | Game      |
++-------+-----------------+-----------+
+| 4 0 0 |  Four           | CP/M      |
++-------+-----------------+-----------+
+| 4 0 1 |  Five           | Z-System  |
++-------+-----------------+-----------+
+| 4 2 0 |  Six            | Net Boot  |
++-------+-----------------+-----------+
+| 4 2 1 |  Seven          | User      |
++-------+-----------------+-----------+
 
 # Disk Management
 
@@ -953,10 +1004,10 @@ whether you boot your OS from ROM or from the disk media itself.
 
 ## Drive Letter Assignment
 
-In legacy CP/M operating systems only 16 drive letters (A:-P:) available
- to be assigned to disks Drive letters were generally mapped to disk 
+In CP/M operating systems only 16 drive letters (A:-P:) available
+to be assigned to disks Drive letters were generally mapped to disk 
 drives in a completely fixed way. For example, drive A: would **always**
- refer to the first floppy disk drive.
+refer to the first floppy disk drive.
 
 RomWBW implements a much more flexible drive letter assignment mechanism 
 so that any drive letter can dynamically be assigned to any disk device, 
@@ -1077,100 +1128,6 @@ Since drive letter assignments are easily changed at any time using the
 starting the operating system.  Even better, you can use an auto-submit
 batch file to customzie the assignments at startup without any user
 intervention.
-
-## Disk Operations/Commands
-
-With some understanding of how RomWBW presents disk space to the
-operating systems, we need to go over the options for actually setting
-up your disk(s) with content.
-
-### Preparing Media for First Use
-
-You can initialize the media in-place using your RomWBW system.
-Essentially, this means you are creating a set of blank directories on
-your disk so that files can be saved there.
-This is somewhat analogous to partitioning of a hard disk
-or doing a low level format of a floppy disk.
-
-Initilizing a Floppy disk is covered in the section [Floppy Disk Formatting],
-or for a Hard disk the section [Hard Disk Preparation] covers the steps to 
-manually setup a hard disk for first use. 
-
-### Clearing (Formatting) Drives 
-
-This is somewhat analogous to doing a FORMAT operation on other systems.
-
-With RomWBW you use the `CLRDIR` command to do this.
-This command is merely "clearing out" the directory space of the drive
-referred to by a drive letter and setting up the new empty directory.
-
-Refer to $doc_apps$ for more information on use of the `CLRDIR` command.
-
-Since `CLRDIR` works on drive letters, make
-absolutely sure you know what media and slice are assigned to that
-drive letter before using `CLRDIR` because `CLRDIR` will wipe out any
-pre-existing contents of the slice.
-
-After `CLRDIR` completes, the slice should be ready to use by the operating
-system via the drive letter assigned.
-Start by using the `DIR` command on the drive.
-This should return without error, but list no files.
-
-Here is an example of using `CLRDIR`.  In this example, the `ASSIGN`
-command is used to show the current drive letter assignments.  Then
-the `CLRDIR` command is used to initialize the directory of drive 'G'
-which is slice 2 of hard disk device IDE0 ("IDE0:2").
-
-```
-B>ASSIGN
-
-   A:=MD0:0
-   B:=MD1:0
-   C:=FD0:0
-   D:=FD1:0
-   E:=IDE0:0
-   F:=IDE0:1
-   G:=IDE0:2
-   H:=IDE0:3
-
-B>CLDIR G:
-CLRDIR Version 1.2B May 2024 by Max Scane
-
-Warning - this utility will overwrite the directory sectors of Drive: G
-Type CAPITAL Y to proceed, any key other key to exit. Y
-Directory cleared.
-B>
-```
-
-### Checking Disk Layout
-
-If you are not sure which disk layout is used for your existing
-media, you can use the CP/M 2.2 `STAT` command to display information
-including the number of "32  Byte Directory Entries"
-for a drive letter on the corresponding hard disk.  
-
-- If it indicates 512, your disk layout is legacy (hd512).  
-- If it indicates 1024, your disk layout is modern (hd1k).
-
-Here is an example of checking the disk layout.  
-
-```
-B>STAT E:DSK:
-
-    E: Drive Characteristics
-65408: 128 Byte Record Capacity
- 8176: Kilobyte Drive  Capacity
- 1024: 32  Byte Directory Entries
-    0: Checked  Directory Entries
-  256: Records/ Extent
-   32: Records/ Block
-   64: Sectors/ Track
-    2: Reserved Tracks
-```
-
-It is critical that you include `DSK:` after the drive letter in the
-`STAT` command line.  The important line to look at is labeled "32 Byte
-Directory Entries".
 
 # Disk Types
 
@@ -1293,25 +1250,26 @@ disk drive space to store a sequential series of slices that contain the
 actual CP/M filesystems referred to by drive letters by the operating 
 system.
 
-Two physical layout schemes exist:
+Two hard disk layout schemes exist:
 
 * Modern (hd1k)
-* Legacy (hd512)
+* Classic (hd512)
 
 You **cannot** mix disk layouts on a single disk device, 
 however It is perfectly fine for one system to have
 multiple hard disks with different layouts -- each physical disk
 device is handled separately.
 
-If you are setting up a new disk, the modern (hd1k) layout is
+If you are setting up a new disk, the Modern (hd1k) layout is
 recommended for the following reasons:
 
 * Larger number of directory entries per filesystem
 * Simplifies creation of coresident FAT filesystem
 * Reduces chances of data corruption
+* Each slice occupies exactly 8MB (an exact power of 2) in size
 
-Both the legacy and modern disk layouts continue to be fully supported
-by RomWBW.  There are no plans to deprecate the legacy layout.  
+Both the classic and modern disk layouts continue to be fully supported
+by RomWBW.  There are no plans to deprecate the classic layout.  
 
 #### Modern Layout
 
@@ -1328,14 +1286,14 @@ RomWBW does not support extended partitions -- only a single
 primary partition can be used.
 
 The existence of a partition table entry for RomWBW on
-a hard disk makes it behave in the modern mode. Removing the RomWBW 
-partition entry from a modern hard disk layout 
+a hard disk makes it behaves in the modern disk layout mode. 
+Removing the RomWBW partition entry from a modern hard disk layout 
 will cause the existing data to be unavailable and/or corrupted
 
 The CP/M filesystem in the slices of the modern disk layout 
 contain 1024 directory entries.
 
-#### Legacy Layout
+#### Classic Layout
 
 Originally, RomWBW always used the very start of the hard disk media
 for the location of the slices.  In this layout, slice 0 referred to
@@ -1344,15 +1302,16 @@ chunk of ~8MB on the disk, and so on. The number of slices is limited
 to the size of the disk media -- if you attempted to read/write to a
 slice that would exceed the disk size, you would see I/O errors. 
 
-The legacy format takes steps to allow a partition table to still be
+The classic disk layout takes steps to allow a partition table to still be
 used for other types of filesystems such as DOS/FAT.  It just does not
 use a partition table entry to determine the start of the RomWBW slices.
 
-The lack of a RomWBW partition table entry will cause legacy behaviour.
-Adding a partition table entry on an existing legacy RomWBW hard disk 
+The lack of a RomWBW partition table entry will cause the classic disk 
+layout to be used.
+Adding a partition table entry on an existing classic RomWBW hard disk 
 will cause the existing data to be unavailable and/or corrupted.
 
-The CP/M filesystem in the slices of the legacy disk layout 
+The CP/M filesystem in the slices of the classic disk layout 
 contain 512 directory entries.
 
 ### Hard Disk Slices
@@ -1426,9 +1385,9 @@ system.
 The exact number of CP/M filesystem slices that will fit on your
 specific physical hard disk can be determined as follows:
 
-- For modern (hd1k) disk layouts, it is 1024KB + (slices * 8192KB). 
+- For Modern (hd1k) disk layouts, it is 1024KB + (slices * 8192KB). 
   Or equivalent to say 1MB + (slices * 8MB).
-- For legacy (hd512) disk layouts, it is slices * 8,320KB.
+- For Classic (hd512) disk layouts, it is slices * 8,320KB.
 
 **WARNING**: In this document KB means 1024 bytes and MB means 1048576
 bytes (frequently expressed as KiB and MiB in modern terminology).
@@ -1459,7 +1418,9 @@ There are two approaches to preparing disks for use by RomWBW.
   including files to a disk.
 
 This section of the document describes the manual process of preparing
-empty disks that are ready for use by an operating system. 
+empty disks that are ready for use by an operating system.
+This is somewhat analogous to partitioning and formatting of a hard disk
+or doing a low level format of a floppy disk.
 
 Alternatively, you can use the pre-built RomWBW disk images to quickly
 create disk media that already has a large selection of files and
@@ -1571,7 +1532,7 @@ This does not mean to imply it is the only possible way.
 
 First you need to understand
 
-*  The disk layout approach (either hd1k or the legacy hd512). 
+*  The disk layout approach (either the Modern hd1k or the Classic hd512). 
    See [Hard Disk Layouts] section if you are not sure. 
    hd1k should be the preferred layout.
 *  The number of 8MB slices that you want to allocate, preferred is 64 slices.
@@ -1600,7 +1561,7 @@ The disk unit number was assigned at boot See [Device Unit Assignments]
 
 Refer to $doc_apps$ for more information on use of the `FDISK80` utility. 
 
-If you want to use the legacy hd512 layout skip down to the [Legacy (hd512)] section
+If you want to use the Classic (hd512) layout skip down to the [Classic (hd512)] section
 
 #### Modern (hd1k)
 
@@ -1662,14 +1623,14 @@ At this point, it is best to restart your system to make sure that
 the operating system is aware of the partition table updates.  Start
 CP/M 2.2 or Z-System from ROM again.
 
-#### Legacy (hd512)
+#### Classic (hd512)
 
 At this point, use the `I` command to initialize (reset) 
 the partition table to an empty state.
 
 To use the hd512 layout, use `W` to write the empty table to the disk 
 and exit.  Remember that the lack of a partition for RomWBW implies the 
-legacy (hd512) layout.
+Classic (hd512) layout.
 
 At this point, it is best to restart your system to make sure that
 the operating system is aware of the partition table updates.  Start
@@ -1687,12 +1648,7 @@ You need to initialize each slice for CP/M to use it.
 This is somewhat analogous to doing a FORMAT operation on other systems,
 and is done using the `CLRDIR` command. 
 
-This is covered in the section [Clearing (Formatting) Drives]
-
-**WARNING**: Earlier versions of the `CLRDIR` application do not
-appear to check for disk errors when it runs.  If you attempt to run
-`CLRDIR` on a drive that is mapped to a slice that does not actually fit
-on the physical disk, it may behave erratically.
+This is covered in the next section [Clearing (Formatting) Drives]
 
 Assuming you want to use additional slices, you should initialize them
 using the same process.  You may need to reassign drive letters to
@@ -1701,10 +1657,56 @@ You can use the `ASSIGN` command to handle this.
 
 ## Post Disk Preparation
 
-Once a disk (either floppy or hard disk) has been initialised and 
-formattted you may optionally;
+Once a disk has been initialised you may need to do one or more of the following;
+* Clear (Format) the drive 
 * Make the disk bootable
 * Copy system (or other) files to the disk
+
+### Clearing (Formatting) Drives
+
+This is somewhat analogous to doing a FORMAT operation on other systems.
+
+With RomWBW you use the `CLRDIR` command to do this.
+This command is merely "clearing out" the directory space of the drive
+referred to by a drive letter and setting up the new empty directory.
+
+Refer to $doc_apps$ for more information on use of the `CLRDIR` command.
+
+Since `CLRDIR` works on drive letters, make
+absolutely sure you know what media and slice are assigned to that
+drive letter before using `CLRDIR` because `CLRDIR` will wipe out any
+pre-existing contents of the slice.
+
+After `CLRDIR` completes, the drive should be ready to use by the operating
+system via the drive letter assigned.
+Start by using the `DIR` command on the drive.
+This should return without error, but list no files.
+
+Here is an example of using `CLRDIR`.  In this example, the `ASSIGN`
+command is used to show the current drive letter assignments.  Then
+the `CLRDIR` command is used to initialize the directory of drive 'G'
+which is slice 2 of hard disk device IDE0 ("IDE0:2").
+
+```
+B>ASSIGN
+
+   A:=MD0:0
+   B:=MD1:0
+   C:=FD0:0
+   D:=FD1:0
+   E:=IDE0:0
+   F:=IDE0:1
+   G:=IDE0:2
+   H:=IDE0:3
+
+B>CLDIR G:
+CLRDIR Version 1.2B May 2024 by Max Scane
+
+Warning - this utility will overwrite the directory sectors of Drive: G
+Type CAPITAL Y to proceed, any key other key to exit. Y
+Directory cleared.
+B>
+```
 
 ### Making a Disk Bootable
 
@@ -1736,6 +1738,38 @@ system and application files to your disks.
 Refer to [Transferring Files] for more information on getting
 files onto your disks.
 
+### Checking Disk Layout
+
+If you are not sure which disk layout is used for your existing
+media, you can use the CP/M 2.2 `STAT` command to display information
+including the number of "32  Byte Directory Entries"
+for a drive letter on the corresponding hard disk.
+
+Note: For CP/M 3 the command is `SHOW [DRIVE]`
+
+- If it indicates 512, your disk layout is Classic (hd512).
+- If it indicates 1024, your disk layout is Modern (hd1k).
+
+Here is an example of checking the disk layout.
+
+```
+B>STAT E:DSK:
+
+    E: Drive Characteristics
+65408: 128 Byte Record Capacity
+ 8176: Kilobyte Drive  Capacity
+ 1024: 32  Byte Directory Entries
+    0: Checked  Directory Entries
+  256: Records/ Extent
+   32: Records/ Block
+   64: Sectors/ Track
+    2: Reserved Tracks
+```
+
+It is critical that you include `DSK:` after the drive letter in the
+`STAT` command line.  The important line to look at is labeled "32 Byte
+Directory Entries".
+
 # Disk Images
 
 Since it would be quite a bit of work to transfer over all the files you
@@ -1766,12 +1800,13 @@ The following table shows the disk images available.
 | xxx_fortran.img   | Microsoft Fortran-80 Compiler        | No       |
 | xxx_games.img     | Games Disk for CP/M                  | No       |
 | xxx_hitechc.img   | HI-TECH Z80 CP/M C compiler          | No       |
+| xxx_infocom.img   | Infocom Games Disk                   | No       |
 | xxx_msxroms1.img  | MSX ROMs Disk 1                      | No       |
 | xxx_msxroms2.img  | MSX ROMs Disk 2                      | No       |
 | xxx_nzcom.img     | NZCOM ZCPR 3.4 Operating System      | Yes      |
 | xxx_qpm.img       | QPM Operating System                 | Yes      |
 | xxx_tpascal.img   | Borland Turbo Pascal Compiler        | No       |
-| xxx_ws4.img       | WordStar v4 & ZDE Applications       | No       |
+| xxx_wp.img        | WordStar v4 & ZDE Applications       | No       |
 | xxx_z80asm.img    | Relocating macro assembler for CP/M  | No       |
 | xxx_zpm3.img      | ZPM3 Operating System                | Yes      |
 | xxx_zsdos.img     | ZCPR-DJ & ZSDOS 1.1 Operating System | Yes      |
@@ -1780,8 +1815,8 @@ You will find 3 sets of these .img files in the distribution.  The
 "xxx" portion of the filename will be:
 
 *  "fd_" for a floppy image.
-*  "hd1k_" for a modern layout hard disk image.
-*  "hd512_" for a legacy layout hard disk image.
+*  "hd1k_" for a Modern layout hard disk image.
+*  "hd512_" for a Classic layout hard disk image.
 
 In the case of xxx_dos65.img, only an hd512 variant is provided.  This
 is a constraint of the DOS65 distribution.
@@ -1830,20 +1865,21 @@ command prompt.
 Keeping in mind that a RomWBW hard disk (including CF/SD/USB devices)
 allows you to have multiple slices (CP/M filesystems), there are a
 couple ways to image hard disk media. The easiest approach is to 
-use the "combo" disk image.  This image is already prepared
+use the Combo Disk Image.  This hard disk image is already prepared
 with 6 slices containing 5 ready-to-run OSes and a slice with
 the WordStar application files.  
 
-Alternatively, you can create your own
-hard disk image with the specific slice contents you choose.
+Alternatively, you can create your own hard disk image with the specific
+slice contents you choose.
 
-### Standard Hard Disk Physical Layout
+### Standard Hard Disk Layout
 
 As previously described in [Hard Disk Layouts], the exact placement of
 slices and optional FAT partition will vary depending on which disk
 layout (hd512 or hd1k) you are using and your partition table entries.
-To simplify the use of hard disk images, RomWBW has adopted standard
-partition table entries for disk image files provided.
+To simplify the use of hard disk images, RomWBW has adopted a standard
+partition layout for disk image files provided.  This standard
+layout is used to produce the Combo Disk Images described below.
 
 These partition sizes and locations were chosen to:
 
@@ -1851,72 +1887,43 @@ These partition sizes and locations were chosen to:
 - Allow for 64 CP/M filesystem slices
 - Allow for a 384KB FAT filesystem
 
-**NOTE:** RomWBW is not limited to these partition table entries.  You 
-can change the size and location of the RomWBW and/or FAT partitions to 
-increase/decrease the number of slices or FAT filesystem size.
+The standard partition table table entries are:
 
 +---------------------------------+-------------------------------+-------------------------------+
-|                                 | **--- Legacy (hd512) ---**    | **--- Modern (hd1k) ---**     |
+|                                 | **--- Modern (hd1k) ---**     | **--- Classic (hd512) ---**    |
 |                                 +---------------+---------------+---------------+---------------+
 |                                 | Byte(s)       | Sector(s)     | Byte(s)       | Sector(s)     |
 +=================================+==============:+==============:+==============:+==============:+
-| RomWBW (slices) Start           | 0             | 0             | 1,048,576     | 2,048         |
+| RomWBW Partition Start          | 1 MB          | 2,048         | --            | --            |
 +---------------------------------+---------------+---------------+---------------+---------------+
-| RomWBW (slices) Size            | 545,259,520   | 1,064,960     | 536,870,912   | 1,048,576     |
+| RomWBW Partition Size           | 512 MB        | 1,048,576     | --            | --            |
 +---------------------------------+---------------+---------------+---------------+---------------+
-| FAT Filesystem Start            | 545,259,520   | 1,064,960     | 537,919,488   | 1,050,624     |
+| FAT Filesystem Start            | 513 MB        | 1,050,624     | 520 MB        | 1,064,960     |
 +---------------------------------+---------------+---------------+---------------+---------------+
-| FAT Filesystem Size             | 402,653,184   | 786,432       | 402,653,184   | 786,432       |
+| FAT Filesystem Size             | 384 MB        | 786,432       | 384 MB        | 786,432       |
 +---------------------------------+---------------+---------------+---------------+---------------+
-| \<end\>                         | 947,912,704   | 1,851,392     | 940,572,672   | 1,837,056     |
-+---------------------------------+---------------+---------------+---------------+---------------+
-
-The above partition table entries will result in the following locations and sizes of
-filesystems on the RomWBW disk images.
-
-
-+---------------------------------+-------------------------------+-------------------------------+
-|                                 | **--- Legacy (hd512) ---**    | **--- Modern (hd1k) ---**     |
-|                                 +---------------+---------------+---------------+---------------+
-|                                 | Byte(s)       | Sector(s)     | Byte(s)       | Sector(s)     |
-+=================================+==============:+==============:+==============:+==============:+
-| Prefix Start                    | --            | --            | 0             | 0             |
-+---------------------------------+---------------+---------------+---------------+---------------+
-| Prefix Size                     | --            | --            | 1,048,576     | 2,048         |
-+---------------------------------+---------------+---------------+---------------+---------------+
-| Slice Size                      | 8,519,680     | 16,640        | 8,388,608     | 16,384        |
-+---------------------------------+---------------+---------------+---------------+---------------+
-| Slice 0 Start                   | 0             | 0             | 1,048,576     | 2,048         |
-+---------------------------------+---------------+---------------+---------------+---------------+
-| Slice 1 Start                   | 8,519,680     | 16,640        | 9,437,184     | 18,432        |
-+---------------------------------+---------------+---------------+---------------+---------------+
-| Slice 2 Start                   | 17,039,360    | 33,280        | 17,825,792    | 34,816        |
-+---------------------------------+---------------+---------------+---------------+---------------+
-| Slice 3 Start                   | 25,559,040    | 49,920        | 26,214,400    | 51,200        |
-+---------------------------------+---------------+---------------+---------------+---------------+
-| Slice 4 Start                   | 34,078,720    | 66,560        | 34,603,008    | 67,584        |
-+---------------------------------+---------------+---------------+---------------+---------------+
-| Slice 5 Start                   | 42,598,400    | 83,200        | 42,991,616    | 83,968        |
-+---------------------------------+---------------+---------------+---------------+---------------+
-| Slice 6 Start                   | 51,118,080    | 99,840        | 51,380,224    | 100,352       |
-+---------------------------------+---------------+---------------+---------------+---------------+
-| Slice 7 Start                   | 59,637,760    | 116,480       | 59,768,832    | 116,736       |
-+---------------------------------+---------------+---------------+---------------+---------------+
-| Slice 63 Start                  | 536,739,840   | 1,048,320     | 529,530,880   | 1,034,240     |
-+---------------------------------+---------------+---------------+---------------+---------------+
-| FAT Filesystem Start            | 545,259,520   | 1,064,960     | 537,919,488   | 1,050,624     |
-+---------------------------------+---------------+---------------+---------------+---------------+
-| FAT Filesystem Size             | 402,653,184   | 786,432       | 402,653,184   | 786,432       |
-+---------------------------------+---------------+---------------+---------------+---------------+
-| \<end\>                         | 947,912,704   | 1,851,392     | 940,572,672   | 1,837,056     |
+| \<end\>                         | 897 MB        | 1,851,392     | 904 MB        | 1,837,056     |
 +---------------------------------+---------------+---------------+---------------+---------------+
 
-#### Combo Hard Disk Image
+**NOTE:** RomWBW is not limited to these partition table entries.  You
+can change the size and location of the RomWBW and/or FAT partitions to
+increase/decrease the number of slices or FAT filesystem size.  Doing
+so would require using `FDISK80` to define your own custom disk layout
+and initializing your filesystems manually.
 
-The combo disk image is essentially just a single image that has several
-of the individual filesystem images (slices) already concatenated 
-together. The combo disk image contains the following 6 slices in the 
-positions indicated:
+The $doc_sys$ has more information on the standard disk layouts as
+implemented in the Combo Disk Images.  Additionally, there is a document
+called "Hard Disk Anatomy.pdf" in the Doc directory of the RomWBW
+distribution with detailed information on the standard disk
+layouts.
+
+### Combo Hard Disk Image
+
+The Combo Disk Image is essentially just a single disk image that has
+several of the individual filesystem images (slices) already
+concatenated together using the standard disk layout described above.
+The Combo Disk Image includes the partition table of the standard disk
+layout and the following 6 slices in the positions indicated:
 
 | **Slice**  | **Description**                         |
 |------------|-----------------------------------------|
@@ -1928,68 +1935,112 @@ positions indicated:
 | Slice 5    | WordStar v4 & ZDE Applications          |
 | Slice 6-63 | _blank unformatted_                     |
 
-There are actually 2 primary combo disk images in the 
-distribution.  One for an hd512 disk layout (hd512_combo.img) and one 
+There are actually 2 Combo Disk Images in the
+distribution.  One for an hd512 disk layout (hd512_combo.img) and one
 for an hd1k disk layout (hd1k_combo.img). Simply use the image file that
 corresponds to your desired hard disk layout.  Review the information
 in [Hard Disk Layouts] if you need more information of the disk layout
 options.
 
-> **Note**: Apart from the hd512 and hd1k combo disk images (mentioned above)
-> there are actaully a number of other `hd1k_*_combo.img` files. These 
-> additional combo files are platform (generally romless) specific, 
+> **Note**: Apart from the hd512 and hd1k Combo Disk Images (mentioned above)
+> there are actually a number of other `hd1k_*_combo.img` files. These
+> additional combo files are platform (generally romless) specific,
 > and should be ignored unless you are on one of these platforms.
 > If you are on one of these platforms you must use the correct combo file
 
-The combo disk image actaully only contains the initial partition table, 
-and the first 6 slices (Slice 0 to 5), this is approximately 49MB in size. 
-While the partition table reserves space to store 64 CP/M filesystem 
-slices as well as a single 384MB FAT filesystem, these area remain
-empty, and must be manuall initialized manually.
+The Combo Disk Image actually only contains the initial partition table,
+and the first 6 slices (Slice 0 to 5), this is approximately 49MB in
+size. While the partition table reserves space to store 64 CP/M
+filesystem slices as well as a single 384MB FAT filesystem, these areas
+remain empty, and must be initialized manually using `CLRDIR` for CP/M
+filesystems and `FAT FORMAT` for the FAT filesystem.
 
-#### Combo Image Capacity
+#### Combo Disk Image Capacity
 
-The combo disk image layout was designed to fit well on a 1GB hard disk.
-The 64 CP/M slices (approximately 512MB) and 384MB FAT filesystem all 
-fit well within a 1GB hard disk.  This size choice was a bit arbitrary, 
-but based on the idea that 1GB CF/SD/USB Media is easy and cheap to 
-acquire.  
+The standard hard disk layout used by the Combo Disk Image was designed
+to fit well on a 1GB hard disk. The 64 CP/M slices (approximately 512MB)
+and 384MB FAT filesystem all fit well within a 1GB hard disk.  This
+size choice was a bit arbitrary, but based on the idea that 1GB
+CF/SD/USB Media is easy and cheap to acquire.
 
-It is fine if your hard disk is smaller than 1GB.  It just 
-means that it will not be possible to use the pre-allocated FAT 
-filesystem partition and any CP/M filesystem slices that don't fit. 
-The true number of CP/M filesystem slices that
-will fit on your specific physical hard disk can be calculated as
-described in [Hard Disk Capacity].
+It is fine if your hard disk is smaller than 1GB.  It just means that it
+will not be possible to use the pre-allocated FAT filesystem partition
+and any CP/M filesystem slices that don't fit. The true number of CP/M
+filesystem slices that will fit on your specific physical hard disk can
+be calculated as described in [Hard Disk Capacity].
 
-If you attempt to access a slice past the end of the 
-physical hard disk you will get "no disk" errors.
-You should calculate the maximum number of slices your hard disk
-will support and do not exceed this number.
+If you attempt to access a slice past the end of the physical hard disk
+you will get "no disk" errors. You should calculate the maximum number
+of slices your hard disk will support and do not exceed this number.
 
-#### Combo Image Advice
+#### Combo Disk Image Advice
 
-A great way to maintain your own data on a hard disk is to put this
-data in slices beyond the first 6.  By doing so, you can always
-"re-image" your drive media with the combo image without overlaying the data
+A great way to maintain your own data on a hard disk is to put your data
+in slices beyond the first 6.  By doing so, you can always "re-image"
+your drive media with the Combo Disk Image without overlaying the data
 stored in the slices beyond the first 6.  Just be very careful to use
 the same combo image layout (hd512 or hd1k) as you used originally.
 
 ### Custom Hard Disk Image
 
-For hard disks, each .img file represents a single slice (CP/M 
-filesystem).  Since a hard disk can contain many slices, you can just 
+For hard disks, each .img file represents a single slice (CP/M
+filesystem).  Since a hard disk can contain many slices, you can just
 concatenate the slices (.img files) together to create your desired hard
-disk image.  
+disk image.
 
 If you look in the Binary directory of the distribution, you will see
-that there are more disk (slice) images than the 6 that are included
-in the "combo" disk images.  These images are identified by looking
-for the files that start with hd1k_ or hd512_.
+that there are more disk (slice) images than the 6 that are included in
+the Combo Disk Images.  These supplemental disk images are identified by
+looking for the files that start with hd1k_ or hd512_.
 
-#### Adding Slices to Combo Image
+There are two approaches you can use to create custom hard disk
+images with multiple slices.
 
-You can add slices to the combo disk images simply by tacking
+- You can add/modify a configuration file and run the RomWBW
+  build process.  This requires running the RomWBW build process, but
+  will cause your custom hard disk images to be created with every
+  build.
+
+- You can manually combine the individual images using `COPY` (Windows)
+  or `cat` (Linux/MacOS).  This does not require running the RomWBW
+  build process, but will require manually recreating your custom
+  hard disk images when you upgrade to new releases of RomWBW.
+
+The following sections provide more detail on each approach.
+
+#### Building Custom Hard Disk Images
+
+The RomWBW build process builds the disk images defined in the
+`Source/Images` directory.  The resultant images are placed in the `Binary`
+directory and are ready to copy to your media.
+
+These aggregate disk images are defined using .def files.  You will see there
+is a combo.def file in the Images directory that defines the slices for the
+Combo disk image.  You can create your own .def files as desired to
+automatically create custom aggregate disk images.  When the RomWBW
+build process is run, it will automatically look for all .def files
+in the `Source/Images` directory and create aggregate disk images for
+each using the same base name as the .def file.
+
+There is an example of this in the `Images` directory called 
+`all.def.example`.  You can remove the ".example" suffix so that the 
+file is called `all.def`.  Now, if you run the RomWBW build process, it 
+will automatically generate `hd512_all.img` and `hd1k_all.img` files in 
+the `/Binary` directory. This example creates an aggregate disk image 
+with all of the possible slices.
+
+You could also modify the contents of the Combo disk image by simply
+modifying the `combo.def` configuration file.  However, it is recommended
+that you leave the Combo image alone and simply define your own.
+
+NOTE: All of the `hd1k_xxx.img` aggregate disk image files created in
+this way (including the Combo disk image) will already be prefixed with 
+`hd1k_prefix.dat`, so you do not need to add the prefix file.  They are 
+ready to write to your media.
+
+#### Combining Hard Disk Images Manually
+
+You can add slices to the Combo Disk Images simply by tacking
 slices onto the end.  For example, if you want to add a slice
 containing the MSX ROMs to the end of the combo image, you could
 use one of the following command lines depending on your operating
@@ -2006,7 +2057,7 @@ Linus/MaxOS:
 Note that you **must** be sure to use either the hd1k_ or hd512_
 prefixed files together.  You cannot mix them.
 
-#### Creating a new Custom Image
+#### Creating a new Custom Image Manually
 
 If you want to create a completely custom hard disk image that is not
 based on the existing combo image, you can generate a disk image entirely
@@ -2052,7 +2103,7 @@ please refer to the ReadMe.txt file in the Source/Images directory.
 
 ### Writing Hard Disk Images
 
-Once you have chosen a combo hard disk image file or prepared your own 
+Once you have chosen a Combo Hard Disk Image file or prepared your own 
 custom hard disk image file, it will need to be written to the media 
 using your modern computer.  When using this method, 
 the disk will be partitioned and setup with 1 or more slices containing 
@@ -2117,13 +2168,13 @@ survive re-imaging, you **must** follow these rules:
 
 This section covers techniques to copy partial images onto pre-existing media,
 in effect performing a selective slice copy. These techniques currently **only** apply to 
-hd1k formatted media, which has a convenient 1MB size metric. 
+hd1k formatted media, which has a partition table entry, and a convenient 1MB size metric. 
 However adapting to hd512 is possible, but left to the user.
 
-On Linux/MacOS the `dd` command can be used to write data in a controlled manner.
-Although Windows does not have a native `dd` command, there are multiple
-options for installing it including [MSYS2](https://www.msys2.org/),
-[CygWin](https://www.cygwin.com/),
+You will need to have access to a Linux/MacOS machine, or have the
+Linux tools for Windows installed, including the `dd` command line tool.
+For Windows there are multiple options for installing `dd` including
+[MSYS2](https://www.msys2.org/), [CygWin](https://www.cygwin.com/),
 and [dd for Windows](http://www.chrysocome.net/dd).
 
 **WARNING**: The `dd` command is a low-level utility that writes
@@ -2146,21 +2197,80 @@ From the documentation of `dd` the following options are important.
               of the default 512
  ```
 
-In the following examples we use the above options, noting the `of=` option
-is specific to your computer but defines the block device that the target
-media is mounted to in the operating system, 
-and `bs=1MB` defines the block size used in other parameters which is convienient 
-since it aligns perfectly with slices which are exactly 8MB 
-and the initial partition table is exactly 1MB. 
+The best approach is to copy data to the RomWBW partition. To do this, you
+must first determine the name that your operating system is using for the
+RomWBW disk and partition. An easy way to determine this may be the linux `mount`
+command, which lists the currently mounted partitions. From here you can more easily 
+determine the naming scheme used by your operating system.
+
+Typically disk devices are named something like `/dev/disk9` or `/dev/sdg`, noting above
+the `g` is a alphabetic and it could be any letter. This naming is arbitrary
+and depend on the operating system, and the specific hardware connecting the device
+
+Partitions are typically named by simply adding a number after the name of the hard disk
+device.  For example, the first partition could be `/dev/disk9s1`, `/dev/sdg1`, or `/dev/sdgp1`.
+
+In the following examples we use the above `dd` options, noting the `of=` option
+is the RomWBW target partition.
+
+** NOTE ** A second approach (Examples 3 and 4) is to address the hard
+disk as a raw disk device and we take explicit steps to calculate the
+start of the RomWBW partition. While this works, it is better to use the
+partition relative approach.
 
 The commands in the examples below are run from the `Binary` folder of RomWBW distribution.
 
-#### Example 1 : Copy the Combo Image without replacing partition table
+#### Example 1 : Copy the Games image to an empty slice of our media
 
-In this example we will copy the (hd1k) combo image over our media 
-without replacing the partition table. In this example we assume the media
-has already been formated with the combo image, and we have modified
-the partition table, which we do not want to overrite.
+In this example we will copy the (hd1k) games image to Slice 6 (free)
+of our existing media. In this example we assume the media
+has already been formatted with the combo image, which already
+contains 6 slices (numbered from 0 to 5).
+We are just copying the needed slice to the existing media
+as a new slice (number 6) after the existing slices making it the 7th slice.
+
+```
+Binary % sudo dd if=hd1k_games.img of=/dev/sdg1 seek=6 bs=8M
+
+Password:
+
+1+0 records in
+1+0 records out
+8388608 bytes transferred in 1.917296 secs (4375228 bytes/sec)
+```
+
+Since bs=8MB the `seek=6` skips the first 6 (8MB slices) slices (in the target image)
+and writes the games image to the 7th slice.
+
+#### Example 2 : Copy the entire Combo Image without replacing partition table
+
+In all of the following examples we use `bs=1MB` to defines the block size used
+in other parameters. This is convenient since the combo image reserves 1MB for
+the partition table at the start of the disk.
+
+In this example we will copy the (hd1k) combo image (which includes a partition table) 
+over our media without replacing the partition table. In this example we assume the media
+has already been formatted with the combo image, and we have modified the partition table, 
+which we do not want to overwrite.
+
+```
+Binary % sudo dd if=hd1k_combo.img of=/dev/sdg1 skip=1 bs=1M
+
+Password:
+
+48+0 records in
+48+0 records out
+50331648 bytes transferred in 11.503776 secs (4745528 bytes/sec)
+```
+
+The `skip=1` skips the first 1MB (partition table) in the input file, 
+effectively stripping out the combo images partition table, before overwriting 
+the slices in the target partition.
+
+#### Example 3 : Copy the Combo Image without replacing partition table
+
+This example is identical to Example 2 except it writes to the target 
+disk device itself (`of=/dev/disk9`), not the target partition.
 
 ```
 Binary % sudo dd if=hd1k_combo.img of=/dev/disk9 skip=1 seek=1 bs=1M
@@ -2174,14 +2284,14 @@ Password:
 
 The `skip=1` skips the first 1MB in the input file, and likewise 
 `seek=1` skips the first 1MB of the target media file we are writing to,
-tus in effect we are skipping the first 1MB,  which contains the 
+thus in effect we are skipping the first 1MB,  which contains the 
 partition table itself.
 
-#### Example 2 : Copy the Games image to an empty slice of our media
+#### Example 4 : Copy the Games image to an empty slice of our media
 
 In this example we will copy the (hd1k) games image to Slice 6 (free)
 of our existing media. In this example we assume the media 
-has already been formated with the combo image, which already 
+has already been formatted with the combo image, which already 
 contains 6 slices (numbered from 0 to 5)
 We are just coping the needed slice to this existing media
 as a new slice (number 6) after the existing slices making it the 7th slice.
@@ -2202,27 +2312,6 @@ where 8 is the size of a slice
 and 1 is the size of the partition table im megabytes.
 Thus we are skipping 6 slices (in the combo image) 
 and writing to the 7th slice.
-
-#### Example 3 : Copy image using partition
-
-In the previous examples, the hard disk is addressed as a raw disk
-device and we took steps to calculate the assumed start of the RomWBW
-partition.  However, as long as the hd1k format is in use, it is
-also possible to just point `dd` directly to the partition itself.
-
-To do this, you must first determine the name that your operating
-system is using for the desired partition.  Frequently, partitions
-are named by simply adding a number after the name of the hard disk
-device.  For example, if the hard disk is /dev/sdg, the first
-partition is frequently /dev/sdg1 or /dev/sdgp1.
-
-Taking advantage of this, it is safer and easier to calculate the
-offset of a slice within the partition.  It is simply the slice
-number \* 8MB.  Example 2 above, could now be performed as:
-
-```
-Binary % sudo dd if=hd1k_games.img of=/dev/sdg1 seek=48 bs=1M
-```
 
 # Operating Systems
 
@@ -2397,6 +2486,7 @@ via the NZ-COM adaptation (see below).
 * [ZCPR Manual]($doc_root$/CPM/ZCPR Manual.pdf)
 * [ZCPR-DJ]($doc_root$/CPM/ZCPR-DJ.doc)
 * [ZSDOS Manual]($doc_root$/CPM/ZSDOS Manual.pdf)
+* [ZSDOS Programmer's Manual]($doc_root$/CPM/ZSDOS Programmers Manual.pdf)
 
 #### Boot Disk
 
@@ -2477,6 +2567,7 @@ Manual.pdf" document in order to use this operating system effectively.
 * [NZCOM Users Manual]($doc_root$/CPM/NZCOM Users Manual.pdf)
 * [Z-System Users Guide]($doc_root$/CPM/Z-System Users Guide.pdf)
 * [ZCPR3.3 User Guide]($doc_root$/CPM/ZCPR3.3 User Guide.pdf)
+* [ZSDOS Programmer's Manual]($doc_root$/CPM/ZSDOS Programmers Manual.pdf)
 
 #### Boot Disk
 
@@ -2687,7 +2778,14 @@ a variety of common ZCPR3 utilities.
 #### Documentation
 
 ZPM3 has no real documentation.  You are expected to understand both
-CP/M 3 and ZCPR 3.
+CP/M 3 and ZCPR 3. The best source of information is:
+
+* [CPM3 Users Guide]($doc_root$/CPM/CPM3 Users Guide.pdf)
+* [CPM3 Command Summary]($doc_root$/CPM/CPM3 Command Summary.pdf)
+* [CPM3 Programmers Guide]($doc_root$/CPM/CPM3 Programmers Guide.pdf)
+* [CPM3 System Guide]($doc_root$/CPM/CPM3 System Guide.pdf)
+* [Z-System Users Guide]($doc_root$/CPM/Z-System Users Guide.pdf)
+* [ZCPR3.3 User Guide]($doc_root$/CPM/ZCPR3.3 User Guide.pdf)
 
 #### Boot Disk
 
@@ -2746,6 +2844,39 @@ The CP/M 3 `DEVICE` command is used to manipulate the device mappings.
   which is confusing, but this is as intended by the ZPM3 distribution.
   I believe it was done this way to make it easier for users to
   transition from CP/M 3 to ZPM3.
+
+- The command line editing key bindings were slightly modified by
+  Jon Saxton when he applied a few ZPM3 fixes.  This is explained
+  in the file zpm3fix.txt in the distribution folder Source/ZPM3.
+  The current key bindings are from the "New" column below.
+
+| **Old** | **New** | **Function**                              |
+|---------|---------|-------------------------------------------|
+| ^A	  | ^A	    | one word left                             |
+| ^B	  | ^B	    | to beginning/end of line                  |
+| ^C	  | ^C	    | reboot if at start of line                |
+| ^D	  | ^D	    | right one char                            |
+| ^E	  | ^E	    | get previous line                         |
+| ^F	  | ^F	    | right one word                            |
+| ^G	  | ^G	    | delete char at cursor                     |
+| ^H	  | ^H	    | destructive backspace                     |
+| ^I	  | ^I	    | (TAB) ignored here                        |
+| ^J	  | ^J	    | (LF) exit editor                          |
+| ^K	  | ^K	    | delete all to the right                   |
+| ^L	  | ^L	    | ignored                                   |
+| ^M	  | ^M	    | (CR) exit editor                          |
+| ^N	  | ^N	    | ignored                                   |
+| ^O	  | ^O	    | ignored                                   |
+| ^P	  | ^P	    | toggle printer echoing                    |
+| ^Q	  | ^Q	    | toggle autoprompt (if enabled)            |
+| ^R	  | ^R	    | ignored                                   |
+| ^S	  | ^S	    | left one char                             |
+| ^T	  | ^T	    | delete word at cursor                     |
+| ^U	  | ^U	    | add line to history                       |
+| ^V	  | ^V	    | clear line, delete from history           |
+| ^W	  | ^X	    | get next line from history                |
+| ^X	  | ^W	    | delete all to the left                    |
+| ^Y	  | ^Y	    | clear line                                |
 
 ## QP/M
 
@@ -2819,7 +2950,7 @@ is analogous to the CP/M 2.2 `STAT` command.  Do **not** use the CP/M
   Source/Images/d_qpm/u0 directory.
 
 - The QPM disk image is not included as one of the slices on the
-  RomWBW combo disk image.  If you want to include QPM, you can do
+  RomWBW Combo Disk Image.  If you want to include QPM, you can do
   so by following the directions in Source/Images/Readme.txt.
 
 ## UCSD p-System
@@ -3074,7 +3205,7 @@ floppy disk and hard disk images.
 | TUNE            | Play .PT2, .PT3, .MYM audio files.                                 |
 | INTTEST         | Test interrupt vector hooking.                                     |
 
-# Real Time Clock
+# Real Time Clock & Date/Time Stamping
 
 RomWBW supports a variety of real time clock hardware.  If your
 system has this hardware, then it will be able to maintain the

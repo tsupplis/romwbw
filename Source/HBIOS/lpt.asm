@@ -13,21 +13,21 @@
 ;  IBM PC STANDARD PARALLEL PORT (SPP):
 ;  - NHYODYNE PRINT MODULE
 ;
-;  PORT 0 (OUTPUT):
+;  DATA (BASE PORT + 0, OUTPUT):
 ;
 ;	D7	D6	D5	D4	D3	D2	D1	D0
 ;     +-------+-------+-------+-------+-------+-------+-------+-------+
 ;     | PD7   | PD6   | PD5   | PD4   | PD3   | PD2   | PD1   | PD0   |
 ;     +-------+-------+-------+-------+-------+-------+-------+-------+
 ;
-;  PORT 1 (INPUT):
+;  STATUS (BASE PORT + 1, INPUT):
 ;
 ;	D7	D6	D5	D4	D3	D2	D1	D0
 ;     +-------+-------+-------+-------+-------+-------+-------+-------+
 ;     | /BUSY | /ACK  | POUT  | SEL   | /ERR  | 0     | 0     | 0     |
 ;     +-------+-------+-------+-------+-------+-------+-------+-------+
 ;
-;  PORT 2 (OUTPUT):
+;  CONTROL (BASE PORT + 2, OUTPUT):
 ;
 ;	D7	D6	D5	D4	D3	D2	D1	D0
 ;     +-------+-------+-------+-------+-------+-------+-------+-------+
@@ -39,21 +39,21 @@
 ;  MG014 STYLE INTERFACE:
 ;  - RCBUS MG014 MODULE
 ;
-;  PORT 0 (OUTPUT):
+;  DATA (BASE PORT + 0, OUTPUT):
 ;
 ;	D7	D6	D5	D4	D3	D2	D1	D0
 ;     +-------+-------+-------+-------+-------+-------+-------+-------+
 ;     | PD7   | PD6   | PD5   | PD4   | PD3   | PD2   | PD1   | PD0   |
 ;     +-------+-------+-------+-------+-------+-------+-------+-------+
 ;
-;  PORT 1 (INPUT):
+;  STATUS (BASE PORT + 1, INPUT):
 ;
 ;	D7	D6	D5	D4	D3	D2	D1	D0
 ;     +-------+-------+-------+-------+-------+-------+-------+-------+
 ;     |       |       |       | /ERR  | SEL   | POUT  | BUSY  | /ACK  |
 ;     +-------+-------+-------+-------+-------+-------+-------+-------+
 ;
-;  PORT 2 (OUTPUT):
+;  CONTROL (BASE PORT + 2, OUTPUT):
 ;
 ;	D7	D6	D5	D4	D3	D2	D1	D0
 ;     +-------+-------+-------+-------+-------+-------+-------+-------+
@@ -62,24 +62,24 @@
 ;
 ;==================================================================================================
 ;
-;  S100 STYLE INTERFACE:
-;  - S100 FPGA Z80
+;  S100 T35 STYLE INTERFACE:
+;  - S100 T35 FPGA Z80
 ;
-;  BASE I/O PORT (OUTPUT):
+;  DATA (BASE PORT + 0, OUTPUT):
 ;
 ;	D7	D6	D5	D4	D3	D2	D1	D0
 ;     +-------+-------+-------+-------+-------+-------+-------+-------+
 ;     | PD7   | PD6   | PD5   | PD4   | PD3   | PD2   | PD1   | PD0   |
 ;     +-------+-------+-------+-------+-------+-------+-------+-------+
 ;
-;  STATUS PORT (INPUT, BASE I/O - 1):
+;  STATUS (BASE PORT + 0, INPUT):
 ;
 ;	D7	D6	D5	D4	D3	D2	D1	D0
 ;     +-------+-------+-------+-------+-------+-------+-------+-------+
 ;     |       |       |       |       |       |       | BUSY  | /ACK  |
 ;     +-------+-------+-------+-------+-------+-------+-------+-------+
 ;
-;  CONTROL PORT (OUTPUT, BASE I/O - 1):
+;  CONTROL (BASE PORT - 1, OUTPUT):
 ;
 ;	D7	D6	D5	D4	D3	D2	D1	D0
 ;     +-------+-------+-------+-------+-------+-------+-------+-------+
@@ -88,6 +88,23 @@
 ;
 ;==================================================================================================
 ;
+;--------------------------------------------------------------------------------------------------
+;   HBIOS MODULE HEADER
+;--------------------------------------------------------------------------------------------------
+;
+ORG_LPT	.EQU	$
+;
+	.DW	SIZ_LPT			; MODULE SIZE
+	.DW	LPT_INITPHASE		; ADR OF INIT PHASE HANDLER
+;
+LPT_INITPHASE:
+	; INIT PHASE HANDLER, A=PHASE
+	;CP	HB_PHASE_PREINIT	; PREINIT PHASE?
+	;JP	Z,LPT_PREINIT		; DO PREINIT
+	CP	HB_PHASE_INIT		; INIT PHASE?
+	JP	Z,LPT_INIT		; DO INIT
+	RET				; DONE
+;
 LPT_INIT:
 	LD	B,LPT_CFGCNT		; LOOP CONTROL
 	XOR	A			; ZERO TO ACCUM
@@ -95,10 +112,18 @@ LPT_INIT:
 	LD	IY,LPT_CFG		; POINT TO START OF CFG TABLE
 LPT_INIT0:
 	PUSH	BC			; SAVE LOOP CONTROL
+	CALL	LPT_PRTCFG		; PRINT CONFIG
 	CALL	LPT_INITUNIT		; HAND OFF TO UNIT INIT CODE
 	POP	BC			; RESTORE LOOP CONTROL
 ;
-	LD	A,(IY+1)		; GET THE LPT TYPE DETECTED
+	JR	Z,LPT_INIT1		; IF DETECTED, CONTINUE INIT
+	CALL	PC_SPACE		; FORMATTING
+	LD	DE,LPT_STR_NOLPT	; NO LPT MESSAGE
+	CALL	WRITESTR		; DISPLAY IT
+	JR	LPT_INIT2		; AND LOOP AS NEEDED
+;
+LPT_INIT1:
+	LD	A,(IY+1)		; GET THE LPT TYPE
 	OR	A			; SET FLAGS
 	JR	Z,LPT_INIT2		; SKIP IT IF NOTHING FOUND
 ;
@@ -107,7 +132,6 @@ LPT_INIT0:
 	POP	DE			; ... TO DE
 	LD	BC,LPT_FNTBL		; BC := FUNCTION TABLE ADDRESS
 	CALL	NZ,CIO_ADDENT		; ADD ENTRY IF LPT FOUND, BC:DE
-	CALL	LPT_PRTCFG		; PRINT IF NOT ZERO
 	POP	BC			; RESTORE LOOP CONTROL
 ;
 LPT_INIT2:
@@ -123,9 +147,7 @@ LPT_INIT3:
 ;
 LPT_INITUNIT:
 	CALL	LPT_DETECT		; DETERMINE LPT TYPE
-	LD	(IY+1),A		; SAVE IN CONFIG TABLE
-	OR	A			; SET FLAGS
-	RET	Z			; ABORT IF NOTHING THERE
+	RET	NZ			; ABORT IF NOTHING THERE
 ;
 	; UPDATE WORKING LPT DEVICE NUM
 	LD	HL,LPT_DEV		; POINT TO CURRENT DEVICE NUM
@@ -135,9 +157,7 @@ LPT_INITUNIT:
 ;
 	; SET DEFAULT CONFIG
 	LD	DE,-1			; LEAVE CONFIG ALONE
-	; CALL INITDEV TO IMPLEMENT CONFIG, BUT NOTE THAT WE CALL
-	; THE INITDEV ENTRY POINT THAT DOES NOT ENABLE/DISABLE INTS!
-	JP	LPT_INITDEVX		; IMPLEMENT IT AND RETURN
+	JP	LPT_INITDEV		; IMPLEMENT IT AND RETURN
 ;
 ; DRIVER FUNCTION TABLE
 ;
@@ -165,42 +185,50 @@ LPT_IN:
 ; BYTE OUTPUT
 ;
 LPT_OUT:
+	; WAIT WHILE PRINTER IS BUSY
 	CALL	LPT_OST			; READY TO SEND?
 	JR	Z,LPT_OUT		; LOOP IF NOT
+;
+	; SET DATA PORT BITS
 	LD	C,(IY+3)		; PORT 0 (DATA)
 	EZ80_IO
 	OUT	(C),E			; OUTPUT DATA TO PORT
+;
+	; SET STROBE
 #IF (LPTMODE == LPTMODE_SPP)
-	LD	A,%00001101		; SELECT & STROBE, LEDS OFF
+	LD	A,%00001101		; SELECT & STROBE, LED OFF
 #ENDIF
 #IF (LPTMODE == LPTMODE_MG014)
 	LD	A,%00000100		; SELECT & STROBE, LED OFF
 #ENDIF
-#IF (LPTMODE == LPTMODE_S100)
+#IF (LPTMODE == LPTMODE_T35)
 	LD	A,%00000000		; STROBE
 #ENDIF
 #IF ((LPTMODE == LPTMODE_SPP) | (LPTMODE == LPTMODE_MG014))
 	INC	C			; PUT CONTROL PORT IN C
 	INC	C
 #ENDIF
-#IF (LPTMODE == LPTMODE_S100)
+#IF (LPTMODE == LPTMODE_T35)
 	DEC	C			; PUT CONTROL PORT IN C
 #ENDIF
 	EZ80_IO
 	OUT	(C),A			; OUTPUT DATA TO PORT
 	CALL	DELAY
+;
+	; CLEAR STROBE
 #IF (LPTMODE == LPTMODE_SPP)
 	LD	A,%00001100		; SELECT, LEDS OFF
 #ENDIF
 #IF (LPTMODE == LPTMODE_MG014)
 	LD	A,%00000101		; SELECT, LED OFF
 #ENDIF
-#IF (LPTMODE == LPTMODE_S100)
-	LD	A,%11111111		; STROBE
+#IF (LPTMODE == LPTMODE_T35)
+	LD	A,%11111111		; CLEAR STROBE
 #ENDIF
 	EZ80_IO
 	OUT	(C),A			; OUTPUT DATA TO PORT
 	CALL	DELAY
+;
 	XOR	A			; SIGNAL SUCCESS
 	RET
 ;
@@ -212,21 +240,19 @@ LPT_IST:
 	RET				; DONE
 ;
 ; OUTPUT STATUS
+; 0 = BUSY, 1 = READY
 ;
 LPT_OST:
 	LD	C,(IY+3)		; BASE PORT
 #IF ((LPTMODE == LPTMODE_SPP) | (LPTMODE == LPTMODE_MG014))
 	INC	C			; SELECT STATUS PORT
 #ENDIF
-#IF (LPTMODE == LPTMODE_S100)
-	DEC	C			; SELECT STATUS PORT
-#ENDIF
 	EZ80_IO
 	IN	A,(C)			; GET STATUS INFO
 #IF (LPTMODE == LPTMODE_SPP)
 	AND	%10000000		; ISOLATE /BUSY
 #ENDIF
-#IF (LPTMODE == LPTMODE_MG014)
+#IF ((LPTMODE == LPTMODE_MG014) | (LPTMODE == LPTMODE_T35))
 	AND	%00000010		; ISOLATE BUSY
 	XOR	%00000010		; INVERT TO READY
 #ENDIF
@@ -235,15 +261,17 @@ LPT_OST:
 ; INITIALIZE DEVICE
 ;
 LPT_INITDEV:
+	; INTERRUPTS DISABLED DURING INIT
+	; ??? IS THIS NEEDED?
 	HB_DI				; AVOID CONFLICTS
-	CALL	LPT_INITDEVX		; DO THE REAL WORK
+	CALL	LPT_INITDEV0		; DO THE REAL WORK
 	HB_EI				; INTS BACK ON
 	RET				; DONE
 ;
 ; THIS ENTRY POINT BYPASSES DISABLING/ENABLING INTS WHICH IS REQUIRED BY
 ; PREINIT ABOVE.  PREINIT IS NOT ALLOWED TO ENABLE INTS!
 ;
-LPT_INITDEVX:
+LPT_INITDEV0:
 ;
 #IF (LPTMODE == LPTMODE_SPP)
 ;
@@ -284,12 +312,13 @@ LPT_INITDEVX:
 	RET				; RETURN
 #ENDIF
 ;
-#IF (LPTMODE == LPTMODE_S100)
+#IF (LPTMODE == LPTMODE_T35)
 	LD	C,(IY+3)		; BASE PORT
 	DEC	C			; DEC TO CONTROL PORT
 	LD	A,$FF			; INIT VALUE
 	EZ80_IO
 	OUT	(C),A			; DO IT
+	XOR	A			; SIGNAL SUCCESS
 	RET				; RETURN
 #ENDIF
 ;
@@ -326,15 +355,7 @@ LPT_DETECT:
 ;
 LPT_DETECT:
 	LD	C,(IY+3)		; BASE PORT ADDRESS
-	CALL	LPT_DETECT2		; CHECK IT
-	JR	Z,LPT_DETECT1		; FOUND IT, RECORD IT
-	LD	A,LPTMODE_NONE		; NOTHING FOUND
-	RET				; DONE
-;
-LPT_DETECT1:
-	; LPT FOUND, RECORD IT
-	LD	A,LPTMODE_SPP		; RETURN CHIP TYPE
-	RET				; DONE
+	JR	LPT_DETECT2		; CHECK IT
 ;
 LPT_DETECT2:
 	; LOOK FOR LPT AT BASE PORT ADDRESS IN C
@@ -394,20 +415,13 @@ LPT_DETECT:
 	CALL	PRTHEXBYTE
   #ENDIF
 	CP	$A5			; CHECK FOR TEST VALUE
-	JR	Z,LPT_DETECT1		; FOUND IT
-	LD	A,LPTMODE_NONE		; NOT FOUND
-	RET
-;
-LPT_DETECT1:
-	; LPT FOUND, RECORD IT
-	LD	A,LPTMODE_MG014		; RETURN CHIP TYPE
-	RET				; DONE
+	RET				; ZF SET IF DETECTED
 #ENDIF
 ;
-#IF (LPTMODE == LPTMODE_S100)
+#IF (LPTMODE == LPTMODE_T35)
 LPT_DETECT:
 	; PORT ALWAYS EXISTS ON FPGA
-	LD	A,LPTMODE_S100		; RETURN CHIP TYPE
+	XOR	A			; SIGNAL SUCCESS
 	RET				; DONE
 #ENDIF
 ;
@@ -417,7 +431,7 @@ LPT_PRTCFG:
 	; ANNOUNCE PORT
 	CALL	NEWLINE			; FORMATTING
 	PRTS("LPT$")			; FORMATTING
-	LD	A,(IY)			; DEVICE NUM
+	LD	A,(IY+2)		; DEVICE NUM
 	CALL	PRTDECB			; PRINT DEVICE NUM
 	PRTS(": IO=0x$")		; FORMATTING
 	LD	A,(IY+3)		; GET BASE PORT
@@ -450,12 +464,14 @@ LPT_TYPE_MAP:
 		.DW	LPT_STR_NONE
 		.DW	LPT_STR_SPP
 		.DW	LPT_STR_MG014
-		.DW	LPT_STR_S100
+		.DW	LPT_STR_T35
 ;
-LPT_STR_NONE	.DB	"<NOT PRESENT>$"
+LPT_STR_NONE	.DB	"???$"
 LPT_STR_SPP	.DB	"SPP$"
 LPT_STR_MG014	.DB	"MG014$"
-LPT_STR_S100	.DB	"S100$"
+LPT_STR_T35	.DB	"T35$"
+;
+LPT_STR_NOLPT	.DB	"NOT PRESENT$"
 ;
 ; WORKING VARIABLES
 ;
@@ -468,7 +484,7 @@ LPT_CFG:
 LPT0_CFG:
 	; LPT MODULE A CONFIG
 	.DB	0			; DEVICE NUMBER (SET DURING INIT)
-	.DB	0			; LPT TYPE (SET DURING INIT)
+	.DB	LPTMODE			; LPT MODE
 	.DB	0			; MODULE ID
 	.DB	LPT0BASE		; BASE PORT
 	.DW	0			; LINE CONFIGURATION
@@ -480,8 +496,8 @@ LPT0_CFG:
   #IF (LPTMODE == LPTMODE_MG014)
 	DEVECHO	"MG014"
   #ENDIF
-  #IF (LPTMODE == LPTMODE_S100)
-	DEVECHO	"S100"
+  #IF (LPTMODE == LPTMODE_T35)
+	DEVECHO	"T35"
   #ENDIF
 	DEVECHO	", IO="
 	DEVECHO	LPT0BASE
@@ -494,7 +510,7 @@ LPT_CFGSIZ	.EQU	$ - LPT_CFG	; SIZE OF ONE CFG TABLE ENTRY
 LPT1_CFG:
 	; LPT MODULE B CONFIG
 	.DB	0			; DEVICE NUMBER (SET DURING INIT)
-	.DB	0			; LPT TYPE (SET DURING INIT)
+	.DB	LPTMODE			; LPT MODE
 	.DB	1			; MODULE ID
 	.DB	LPT1BASE		; BASE PORT
 	.DW	0			; LINE CONFIGURATION
@@ -506,8 +522,8 @@ LPT1_CFG:
   #IF (LPTMODE == LPTMODE_MG014)
 	DEVECHO	"MG014"
   #ENDIF
-  #IF (LPTMODE == LPTMODE_S100)
-	DEVECHO	"S100"
+  #IF (LPTMODE == LPTMODE_T35)
+	DEVECHO	"T35"
   #ENDIF
 	DEVECHO	", IO="
 	DEVECHO	LPT1BASE
@@ -516,3 +532,14 @@ LPT1_CFG:
 #ENDIF
 ;
 LPT_CFGCNT	.EQU	($ - LPT_CFG) / LPT_CFGSIZ
+;
+;--------------------------------------------------------------------------------------------------
+;   HBIOS MODULE TRAILER
+;--------------------------------------------------------------------------------------------------
+;
+END_LPT	.EQU	$
+SIZ_LPT	.EQU	END_LPT - ORG_LPT
+;	
+	MEMECHO	"LPT occupies "
+	MEMECHO	SIZ_LPT
+	MEMECHO	" bytes.\n"

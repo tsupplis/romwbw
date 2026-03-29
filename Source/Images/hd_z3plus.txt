@@ -1,3 +1,5 @@
+@Label="Z3PLUS"
+@SysImage="../CPM3/cpmldr.sys"
 #
 # Add the ReadMe document
 #
@@ -45,6 +47,7 @@ d_cpm3/u0/HELP.HLP 0:
 ../../Binary/Apps/format.com 15:
 ../../Binary/Apps/mode.com 15:
 ../../Binary/Apps/rtc.com 15:
+../../Binary/Apps/slabel.com 15:
 ../../Binary/Apps/survey.com 15:
 ../../Binary/Apps/syscopy.com 15:
 ../../Binary/Apps/sysgen.com 15:
@@ -57,12 +60,15 @@ d_cpm3/u0/HELP.HLP 0:
 ../../Binary/Apps/zmp.com 15:
 ../../Binary/Apps/zmp.hlp 15:
 ../../Binary/Apps/zmp.doc 10:
+../../Binary/Apps/zmp.cfg 15:
+../../Binary/Apps/zmp.fon 15:
 ../../Binary/Apps/zmxfer.ovr 15:
 ../../Binary/Apps/zmterm.ovr 15:
 ../../Binary/Apps/zminit.ovr 15:
 ../../Binary/Apps/zmconfig.ovr 15:
 ../../Binary/Apps/zmd.com 15:
 ../../Binary/Apps/vgmplay.com 15:
+../../Binary/Apps/vgminfo.com 15:
 #
 ../../Binary/Apps/Test/*.com 2:
 ../../Binary/Apps/Test/*.doc 2:

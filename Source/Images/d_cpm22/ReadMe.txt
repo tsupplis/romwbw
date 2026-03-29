@@ -88,6 +88,8 @@ XM.COM - XModem file transfer application
 ZMP.COM - ZModem communications program (requires dedicated comm port)
 ZMP.DOC - Documentation for ZMP
 ZMP.HLP - Help file for ZMP
+ZMP.CFG - Configuration file for ZMP
+ZMP.FON - Phone book for ZMP
 ZMXFER.OVR - Overlay file for ZMP
 ZMTERM.OVR - Overlay file for ZMP
 ZMINIT.OVR - Overlay file for ZMP
@@ -139,7 +141,7 @@ BBCBASIC.TXT - Help file for BBC BASIC
 GENHEX.COM - Generates an Intel Hex file from the input file
 LS.COM - An alternative file listing to DIR
 LSWEEP.COM - Can extract and view member files of an .LBR archive
-
+HELLO.ASM - Sample assembly language application
 
 == Testing Applications (User Area 2) ==
 
@@ -165,4 +167,4 @@ in this user area for more information.
 N.B., at a minimum, some of the files in this user area must be copied
 to user area 0 for CP/NET to work properly.
 
--- WBW 3:20 PM 8/27/2021
+-- WBW 12:57 PM 7/29/2025

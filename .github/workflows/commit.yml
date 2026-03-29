@@ -14,7 +14,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@v6
 
       - name: Get Commit Ref
         run: |
@@ -26,7 +26,8 @@ jobs:
         run: |
           export TZ='America/Los_Angeles'
           sudo apt-get install srecord
-          make distlog
+          make transpile-c-code
+          make distlog --trace
           rm -rf .git*
 
       - name: List Output
@@ -36,7 +37,7 @@ jobs:
           find -type f -exec md5sum '{}' \;
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4.3.0
+        uses: actions/upload-artifact@v7
         with:
           name: RomWBW-${{env.COMMIT_REF}}-Linux
           path: .
@@ -46,7 +47,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.1.1
+        uses: actions/checkout@v6
 
       - name: Get Commit Ref
         run: |
@@ -68,7 +69,7 @@ jobs:
           find . -type f -exec md5 -r -- '{}' +;
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4.3.0
+        uses: actions/upload-artifact@v7
         with:
           name: RomWBW-${{env.COMMIT_REF}}-MacOS
           path: .

@@ -1,3 +1,5 @@
+@Label="CP/M 2.2"
+@SysImage="../CPM22/cpm_wbw.sys"
 #
 # Add the ReadMe document
 #
@@ -19,6 +21,7 @@ d_cpm22/ReadMe.txt 0:
 ../../Binary/Apps/format.com 0:
 ../../Binary/Apps/mode.com 0:
 ../../Binary/Apps/rtc.com 0:
+../../Binary/Apps/slabel.com 0:
 ../../Binary/Apps/survey.com 0:
 ../../Binary/Apps/syscopy.com 0:
 ../../Binary/Apps/sysgen.com 0:
@@ -31,12 +34,15 @@ d_cpm22/ReadMe.txt 0:
 ../../Binary/Apps/zmp.com 0:
 ../../Binary/Apps/zmp.hlp 0:
 ../../Binary/Apps/zmp.doc 0:
+../../Binary/Apps/zmp.cfg 0:
+../../Binary/Apps/zmp.fon 0:
 ../../Binary/Apps/zmxfer.ovr 0:
 ../../Binary/Apps/zmterm.ovr 0:
 ../../Binary/Apps/zminit.ovr 0:
 ../../Binary/Apps/zmconfig.ovr 0:
 ../../Binary/Apps/zmd.com 0:
 ../../Binary/Apps/vgmplay.com 0:
+../../Binary/Apps/vgminfo.com 0:
 #
 ../../Binary/Apps/Test/*.com 2:
 ../../Binary/Apps/Test/*.doc 2:

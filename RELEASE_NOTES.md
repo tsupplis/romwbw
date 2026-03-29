@@ -8,10 +8,52 @@ release of RomWBW.
 - **Please** review the "Upgrading" Section of the RomWBW User Guide.
 
 - The RomWBW ROM and the RomWBW disk images are intended to be a
-  matched set.  After upgrading your ROM, it is important to update
-  the OS boot tracks of your disks as well as the RomWBW-specific
-  applications.  This is discussed in the "Upgrading" section of the
-  RomWBW User Guide.
+  matched set.  After upgrading your ROM, you need to update your
+  boot disk media by doing one of the following:
+  
+  - Write a new disk image (typically hd1k_combo.img) onto your
+    disk media (may overwrite existing data/files).
+  - Update the boot tracks and RomWBW applications on the bootable OS
+    images as described in the RomWBW User Guide.
+
+## Version 3.6
+
+### Upgrade Notes
+
+- The FZ80 (S100 FPGA Z80) platform has been renamed to SZ80 (S100 Z80)
+  and has two configurations.  SZ80_std is for the generic S100
+  Z80 CPU.  SZ80_fpga is for the FPGA Z80 SBC.
+
+### New Features
+
+- Slice inventory function in boot loader lists the available slices
+  and descriptions. (Mark Pruden)
+- Native USB driver supporting hard disk, floppy, and keyboard for
+  specific platforms.  (Dean Netherton)
+- See ChangeLog.txt for complete list of updates
+
+### New Hardware Support
+
+- Support for MSX systems. (H.J.Berends)
+- Support for S100 Z80 CPU.
+
+## Version 3.5.1
+
+This is a patch release of v3.5.
+
+### Fixes
+
+- Corrects an issue with the `CPMLDR.SYS` and `ZPMLDR.SYS` files that
+  caused `SYSCOPY` to fail when used with them.
+
+- Added missing `BCLOAD` file to the MS BASIC Compiler disk image.
+  
+### New Features
+
+- Added `SLABEL` application (Mark Pruden).
+
+- Variety of documentation improvements, especially an overhaul of
+  the Hardware Document (Mark Pruden).
 
 ## Version 3.5
 
@@ -51,7 +93,7 @@ release of RomWBW.
   allows OS to recover from applications that reprogram the TMS
   video display controller.
 
-- Implemented "application" RAM banks that can be discovered bia
+- Implemented "application" RAM banks that can be discovered via
   the HBIOS API.
 
 - Documentation improvements (Mark Pruden), including:
@@ -67,13 +109,14 @@ release of RomWBW.
 
 - `COPYSL` slice copy application (Mark Pruden).
 
+- `SLABEL` slice label display/edit tool (Mark Pruden).
+
 - Improved disk slice management and protection (Mark Pruden).
 
 - Initial NVRAM configuration support (Mark Pruden).
 
 - Enhancements to ASSIGN command to automatically assign drives
   (Mark Pruden).
-
 
 ### New Hardware Support
 

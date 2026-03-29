@@ -1,12 +1,12 @@
 DIST_OBJECTS := \
 	DYNO_std MK4_std N8_std RCZ180_ext RCZ180_nat RCZ180_z1rcc \
 	RCZ280_ext RCZ280_nat RCZ280_zz80mb RCZ280_zzrcc RCZ280_zzrcc_ram \
-	RCZ80_std RCZ80_kio RCZ80_easy RCZ80_tiny RCZ80_skz RCZ80_zrc \
+	RCZ80_std RCZ80_kio EZZ80_easy EZZ80_tiny RCZ80_skz RCZ80_zrc \
 	RCZ80_zrc_ram RCZ80_zrc512 RPH_std SBC_std SBC_simh MBC_std \
 	DUO_std SCZ180_sc126 SCZ180_sc130 SCZ180_sc131 SCZ180_sc140 \
 	SCZ180_sc503 SCZ180_sc700 S100_std UNA_std Z80RETRO_std \
 	ZETA_std ZETA2_std HEATH_std EPITX_std GMZ180_std
-#	RCZ80_mt RCZ80_duart MON_std
+#	RCZ80_mt RCZ80_duart MON_std N8PC_std
 
 OBJECTS := $(DIST_OBJECTS)
 OBJECTS := RCZ80_std
@@ -45,9 +45,9 @@ camel80.bin:
 tastybasic.bin:
 	cp ../TastyBasic/src/$@ .
 
-s100mon.bin:
-	$(ZXCC) $(CPM)/SLR180 -s100mon/FH
-	$(ZXCC) $(CPM)/MLOAD25 -s100mon.bin=s100mon
+sz180mon.bin:
+	$(ZXCC) $(CPM)/SLR180 -sz180mon/FH
+	$(ZXCC) $(CPM)/MLOAD25 -sz180mon.bin=sz180mon
 
 %.build.inc:
 	echo $@
@@ -117,7 +117,7 @@ DUO_%.osimg1.bin: NETBOOT=netboot-duo.mod
 	cat camel80.bin $(*F).nascom.bin tastybasic.bin $(*F).game.bin $(*F).eastaegg.bin $(NETBOOT) $(*F).updater.bin $(*F).sysconf.bin $(*F).usrrom.bin >$@
 	srec_cat $@ -Binary -Crop 0 0x7FFF -Checksum_Negative_Big_Endian 0x7FFF 1 1 -o $@ -Binary
 
-S100_%.imgpad2.bin: s100mon.bin
+S100_%.imgpad2.bin: sz180mon.bin
 	cp $< $@
 	srec_cat $@ -Binary -Crop 0 0x7FFF -Checksum_Negative_Big_Endian 0x7FFF 1 1 -o $@ -Binary
 
@@ -143,4 +143,3 @@ UNA_%.rom: UNA_%.osimg.bin UNA_%.hbios_env.sh
 
 %.upd: %.hbios_rom.bin %.osimg.bin %.osimg1.bin %.imgpad2.bin
 	cat $(*F).hbios_rom.bin $(*F).osimg.bin $(*F).osimg1.bin $(*F).imgpad2.bin >$@
-

@@ -1,3 +1,5 @@
+@Label="HITECH-C"
+@SysImage="../ZSDOS/zsys_wbw.sys"
 #
 # Add the ReadMe document
 #

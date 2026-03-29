@@ -15,6 +15,23 @@
 ;======================================================================
 ;
 ;
+;--------------------------------------------------------------------------------------------------
+;   HBIOS MODULE HEADER
+;--------------------------------------------------------------------------------------------------
+;
+ORG_TERM	.EQU	$
+;
+	.DW	SIZ_TERM		; MODULE SIZE
+	.DW	TERM_INITPHASE		; ADR OF INIT PHASE HANDLER
+;
+TERM_INITPHASE:
+	; INIT PHASE HANDLER, A=PHASE
+	CP	HB_PHASE_PREINIT	; PREINIT PHASE?
+	JP	Z,TERM_PREINIT		; DO PREINIT
+	;CP	HB_PHASE_INIT		; INIT PHASE?
+	;JP	Z,TERM_INIT		; DO INIT
+	RET				; DONE
+;
 ;======================================================================
 ; TERMINAL DRIVER - PRE-CONSOLE INITIALIZATION
 ;======================================================================
@@ -68,8 +85,11 @@ TERM_ATTACH:
 	CALL	ANSI_INIT		; INIT ANSI, DE := ANSI_FNTBL
   #ENDIF
 	POP	HL			; RECOVER VDA INSTANCE DATA  PTR
-	RET	NZ			; BAIL OUT ON ERROR
+	JR	Z,TERM_ATTACH1		; CONTINUE IF GOOD RETURN
+	OR	$FF			; SET ERROR RETURN
+	RET				; BAIL OUT ON ERROR
 ;
+TERM_ATTACH1:
 	; ADD OURSELVES TO CIO DISPATCH TABLE
 	PUSH	DE			; COPY EMULATOR FUNC TBL ADDRESS
 	POP	BC			; ... TO BC
@@ -77,13 +97,14 @@ TERM_ATTACH:
 	POP	DE			; ... TO DE
 	CALL	CIO_ADDENT		; ADD ENTRY, A := UNIT ASSIGNED
 	;;;LD	(HCB + HCB_CRTDEV),A	; SET OURSELVES AS THE CRT DEVICE
+	PUSH	AF			; SAVE UNIT ASSIGNED
 	CALL	CIO_SETCRT		; SET OURSELVES AS THE CRT DEVICE
 ;
 	; INCREMENT DEVICE COUNT
 	LD	HL,TERM_DEVCNT		; POINT TO DEVICE COUNT
 	INC	(HL)			; INCREMENT IT
 ;
-	XOR	A			; SIGNAL SUCCESS
+	POP	AF			; RETURN UNIT ASSIGNED
 	RET				; RETURN
 ;
 ;======================================================================
@@ -130,3 +151,14 @@ TERM_RESET:
 	RET
 ;
 #ENDIF
+;
+;--------------------------------------------------------------------------------------------------
+;   HBIOS MODULE TRAILER
+;--------------------------------------------------------------------------------------------------
+;
+END_TERM	.EQU	$
+SIZ_TERM	.EQU	END_TERM - ORG_TERM
+;	
+	MEMECHO	"TERM occupies "
+	MEMECHO	SIZ_TERM
+	MEMECHO	" bytes.\n"

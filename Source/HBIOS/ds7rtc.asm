@@ -25,6 +25,23 @@ DS7_CTL		.EQU	(DS7_OUT | DS7_SQWE | DS7_RATE)
 ;
 		DEVECHO	"DS1307: ENABLED\n"
 ;
+;--------------------------------------------------------------------------------------------------
+;   HBIOS MODULE HEADER
+;--------------------------------------------------------------------------------------------------
+;
+ORG_DS7	.EQU	$
+;
+	.DW	SIZ_DS7		; MODULE SIZE
+	.DW	DS7_INITPHASE		; ADR OF INIT PHASE HANDLER
+;
+DS7_INITPHASE:
+	; INIT PHASE HANDLER, A=PHASE
+	;CP	HB_PHASE_PREINIT	; PREINIT PHASE?
+	;JP	Z,DS7RTC_PREINIT	; DO PREINIT
+	CP	HB_PHASE_INIT		; INIT PHASE?
+	JP	Z,DS7RTC_INIT		; DO INIT
+	RET				; DONE
+;
 ;-----------------------------------------------------------------------------
 ; DS1307 INITIALIZATION
 ;
@@ -418,12 +435,12 @@ DS7_CLP:LD	C,(HL)
 	RET
 ;
 DS7_CLKTBL:
-	.DB	04H, 00111111B, '/'
-	.DB	05H, 00011111B, '/'
-	.DB	06H, 11111111B, ' '
-	.DB	02H, 00011111B, ':'
-	.DB	01H, 01111111B, ':'
-	.DB	00H, 01111111B, 00H
+	.DB	04H, 00111111B, '/'	; DD: 31
+	.DB	05H, 00011111B, '/'	; MM: 12
+	.DB	06H, 11111111B, ' '	; YY: 99
+	.DB	02H, 01111111B, ':'	; SS: 59
+	.DB	01H, 01111111B, ':'	; MM: 59
+	.DB	00H, 00111111B, 00H	; HH: 24
 ;
 DS7_BCD:PUSH	HL
 	LD      HL,DS7_BUF     	; READ VALUE FROM
@@ -447,3 +464,14 @@ DS7_BCD:PUSH	HL
 DS7_BUF:	.FILL	8,0				; BUFFER FOR TIME, DATE AND CONTROL
 ;DS7_COLD	.DB	$80,$00,$00,$01,$01,$01,$00	; COLD START RTC SETTINGS
 ;
+;
+;--------------------------------------------------------------------------------------------------
+;   HBIOS MODULE TRAILER
+;--------------------------------------------------------------------------------------------------
+;
+END_DS7	.EQU	$
+SIZ_DS7	.EQU	END_DS7 - ORG_DS7
+;	
+	MEMECHO	"DS7 occupies "
+	MEMECHO	SIZ_DS7
+	MEMECHO	" bytes.\n"

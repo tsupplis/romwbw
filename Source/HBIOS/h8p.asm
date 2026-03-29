@@ -39,6 +39,23 @@ H8FPIO		.EQU	$F0
 	DEVECHO	H8FPIO
 	DEVECHO	"\n"
 ;
+;--------------------------------------------------------------------------------------------------
+;   HBIOS MODULE HEADER
+;--------------------------------------------------------------------------------------------------
+;
+ORG_H8P	.EQU	$
+;
+	.DW	SIZ_H8P		; MODULE SIZE
+	.DW	H8P_INITPHASE		; ADR OF INIT PHASE HANDLER
+;
+H8P_INITPHASE:
+	; INIT PHASE HANDLER, A=PHASE
+	CP	HB_PHASE_PREINIT	; PREINIT PHASE?
+	JP	Z,H8P_PREINIT		; DO PREINIT
+	CP	HB_PHASE_INIT		; INIT PHASE?
+	JP	Z,H8P_INIT		; DO INIT
+	RET				; DONE
+;
 ;__H8P_PREINIT_______________________________________________________________________________________
 ;
 ;  CONFIGURE AND RESET PANEL
@@ -50,7 +67,7 @@ H8P_PREINIT:
 	; HEATH H8 PLATFORM IMPLEMENTS A CPU SPEED DIVISOR AS SET BY THE
 	; 2 LS BITS OF PORT H8PSPDIO.  THE OSCILLATOR IS NORMALLY 16MHZ.
 	; 0=FULL (16MHZ), 1=1/2 (8MHZ), 2=1/4 (4 MHZ), 3=1/8 (2 MHZ)
-	; FOR BOOT, WE SET THE DIVISOR TO HALF (8MHZ)WHICH IS THE FASTEST
+	; FOR BOOT, WE SET THE DIVISOR TO HALF (8MHZ) WHICH IS THE FASTEST
 	; SPEED WE CAN USE THAT STILL ENSURES ALL HARDWARE CAN BE DETECTED.
 	; E.G., MSX BOARD MAXES OUT AT 8MHZ.
 	LD	A,$01			; 8 MHZ OPERATION
@@ -972,3 +989,14 @@ H8P_UPTIME:
 	.DW	0
 H8P_UPTDIG:
 	.DB	0,0,0,0,0,0,0,0,0
+;
+;--------------------------------------------------------------------------------------------------
+;   HBIOS MODULE TRAILER
+;--------------------------------------------------------------------------------------------------
+;
+END_H8P	.EQU	$
+SIZ_H8P	.EQU	END_H8P - ORG_H8P
+;	
+	MEMECHO	"H8P occupies "
+	MEMECHO	SIZ_H8P
+	MEMECHO	" bytes.\n"

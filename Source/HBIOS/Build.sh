@@ -17,15 +17,16 @@ if [ "${ROM_PLATFORM}" == "dist" ] ; then
 	ROM_PLATFORM="ZETA"; ROM_CONFIG="std"; bash Build.sh
 	ROM_PLATFORM="ZETA2"; ROM_CONFIG="std"; bash Build.sh
 	ROM_PLATFORM="N8"; ROM_CONFIG="std"; bash Build.sh
+	ROM_PLATFORM="N8PC"; ROM_CONFIG="std"; bash Build.sh
 	ROM_PLATFORM="MK4"; ROM_CONFIG="std"; bash Build.sh
+	ROM_PLATFORM="RC2014"; ROM_CONFIG="std"; bash Build.sh
 	ROM_PLATFORM="RCEZ80"; ROM_CONFIG="std"; bash Build.sh
 	ROM_PLATFORM="RCZ80"; ROM_CONFIG="std"; bash Build.sh
 	ROM_PLATFORM="RCZ80"; ROM_CONFIG="kio_std"; bash Build.sh
-	ROM_PLATFORM="RCZ80"; ROM_CONFIG="easy_std"; bash Build.sh
-	ROM_PLATFORM="RCZ80"; ROM_CONFIG="tiny_std"; bash Build.sh
+	ROM_PLATFORM="EZZ80"; ROM_CONFIG="easy_std"; bash Build.sh
+	ROM_PLATFORM="EZZ80"; ROM_CONFIG="tiny_std"; bash Build.sh
 	ROM_PLATFORM="RCZ80"; ROM_CONFIG="skz_std"; bash Build.sh
 	ROM_PLATFORM="RCZ80"; ROM_CONFIG="zrc_std"; bash Build.sh
-	ROM_PLATFORM="RCZ80"; ROM_CONFIG="zrc_ram_std"; bash Build.sh
 	ROM_PLATFORM="RCZ80"; ROM_CONFIG="zrc512_std"; bash Build.sh
 	ROM_PLATFORM="RCZ80"; ROM_CONFIG="ez512_std"; bash Build.sh
 	ROM_PLATFORM="RCZ80"; ROM_CONFIG="k80w_std"; bash Build.sh
@@ -36,7 +37,6 @@ if [ "${ROM_PLATFORM}" == "dist" ] ; then
 	ROM_PLATFORM="RCZ280"; ROM_CONFIG="nat_std"; bash Build.sh
 	ROM_PLATFORM="RCZ280"; ROM_CONFIG="zz80mb_std"; bash Build.sh
 	ROM_PLATFORM="RCZ280"; ROM_CONFIG="zzrcc_std"; bash Build.sh
-	ROM_PLATFORM="RCZ280"; ROM_CONFIG="zzrcc_ram_std"; bash Build.sh
 	ROM_PLATFORM="SCZ180"; ROM_CONFIG="sc126_std"; bash Build.sh
 	ROM_PLATFORM="SCZ180"; ROM_CONFIG="sc130_std"; bash Build.sh
 	ROM_PLATFORM="SCZ180"; ROM_CONFIG="sc131_std"; bash Build.sh
@@ -47,13 +47,15 @@ if [ "${ROM_PLATFORM}" == "dist" ] ; then
 	ROM_PLATFORM="DYNO"; ROM_CONFIG="std"; bash Build.sh
 	ROM_PLATFORM="RPH"; ROM_CONFIG="std"; bash Build.sh
 	ROM_PLATFORM="Z80RETRO"; ROM_CONFIG="std"; bash Build.sh
-	ROM_PLATFORM="S100"; ROM_CONFIG="std"; bash Build.sh
+	ROM_PLATFORM="SZ180"; ROM_CONFIG="std"; bash Build.sh
 	ROM_PLATFORM="DUO"; ROM_CONFIG="std"; bash Build.sh
 	ROM_PLATFORM="HEATH"; ROM_CONFIG="std"; bash Build.sh
 	ROM_PLATFORM="EPITX"; ROM_CONFIG="std"; bash Build.sh
 #	ROM_PLATFORM="MON"; ROM_CONFIG="std"; bash Build.sh
 	ROM_PLATFORM="NABU"; ROM_CONFIG="std"; bash Build.sh
-	ROM_PLATFORM="FZ80"; ROM_CONFIG="std"; bash Build.sh
+	ROM_PLATFORM="SZ80"; ROM_CONFIG="std"; bash Build.sh
+	ROM_PLATFORM="SZ80"; ROM_CONFIG="t35_std"; bash Build.sh
+	ROM_PLATFORM="MSX"; ROM_CONFIG="std"; bash Build.sh
 	ROM_PLATFORM="UNA"; ROM_CONFIG="std"; bash Build.sh
 	exit
 fi

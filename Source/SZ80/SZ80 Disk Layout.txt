@@ -1,0 +1,19 @@
+SZ80 Disk Prefix Layout
+=======================
+
+---- Bytes ----   --- Sectors ---
+Start   Length    Start   Length    Description
+------- -------   ------- -------   ---------------------------
+0x00000 0x001BE   0       1         Unused
+0x001B8 0x00048                     RomWBW Partition Table
+0x00200 0x1EE00   1       7FE00     Unused
+0x80000 0x60000   1024    768       RomWBW
+0x100000          2048              Start of slices (partition 0x1E)
+
+Notes
+-----
+
+- Z80 Monitor reads 128KB (RomWBW) from sectors 1024-1279 of CF into first 128KB of RAM
+- Z80 Monitor maps first 16KB of physical RAM to first 32KB of CPU RAM and starts execution at 0x0000
+
+-- WBW 10:07 AM 9/23/2025

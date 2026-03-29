@@ -66,26 +66,10 @@ PCF_BB		.EQU  00000001B
 ; |  12MHz  |       |        |       |         |        | 90Khz | 120Khz |   138Khz  |  150Khz |
 ; +----------------------------------------------------------------------------------+---------+
 ;
-; CLOCK CHIP FREQUENCIES
+; SEE STD.ASM FOR DEFINITIONS OF PCFCLK AND PCFTRNS VALUES
 ;
-PCF_CLK3   	.EQU	000H
-PCF_CLK443 	.EQU	010H
-PCF_CLK6   	.EQU	014H
-PCF_CLK8   	.EQU	018H
-PCF_CLK12  	.EQU	01CH
-;
-; TRANSMISSION FREQUENCIES
-;
-PCF_TRNS90 	.EQU	000H	;  90 kHz */
-PCF_TRNS45 	.EQU	001H	;  45 kHz */
-PCF_TRNS11 	.EQU	002H	;  11 kHz */
-PCF_TRNS15 	.EQU	003H	; 1.5 kHz */
-;
-; BELOW VARIABLES CONTROL PCF CLOCK DIVISOR PROGRAMMING
-; HARD-CODED FOR NOW
-;
-PCF_CLK	  	.EQU	PCF_CLK12
-PCF_TRNS	.EQU	PCF_TRNS90
+PCF_CLK	  	.EQU	PCFCLK
+PCF_TRNS	.EQU	PCFTRNS
 ;
 ; TIMEOUT AND DELAY VALUES (ARBITRARY)
 ;
@@ -99,6 +83,26 @@ PCF_LABDLY	.EQU	65000
 	DEVECHO	"\n"
 ;
 ; DATA PORT REGISTERS
+;
+;
+;--------------------------------------------------------------------------------------------------
+;   HBIOS MODULE HEADER
+;--------------------------------------------------------------------------------------------------
+;
+ORG_PCF	.EQU	$
+;
+	.DW	SIZ_PCF		; MODULE SIZE
+	.DW	PCF_INITPHASE		; ADR OF INIT PHASE HANDLER
+;
+PCF_INITPHASE:
+	; INIT PHASE HANDLER, A=PHASE
+	;CP	HB_PHASE_PREINIT	; PREINIT PHASE?
+	;JP	Z,PCF_PREINIT		; DO PREINIT
+	CP	HB_PHASE_INIT		; INIT PHASE?
+	JP	Z,PCF_INIT		; DO INIT
+	RET				; DONE
+;
+;
 ;
 PCF_INIT:
 	CALL	NEWLINE				; Formatting
@@ -510,3 +514,14 @@ PCF_TOFAIL	.DB	"TIMEOUT ERROR$"
 PCF_ARBFAIL 	.DB	"LOST ARBITRATION$"
 PCF_PINFAIL 	.DB	"PIN FAIL$"
 PCF_BBFAIL	.DB	"BUS BUSY$"
+;
+;--------------------------------------------------------------------------------------------------
+;   HBIOS MODULE TRAILER
+;--------------------------------------------------------------------------------------------------
+;
+END_PCF	.EQU	$
+SIZ_PCF	.EQU	END_PCF - ORG_PCF
+;	
+	MEMECHO	"PCF occupies "
+	MEMECHO	SIZ_PCF
+	MEMECHO	" bytes.\n"

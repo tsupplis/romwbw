@@ -1,0 +1,535 @@
+;======================================================================
+;	VIDEO DRIVER FOR TRION VGA
+;	http://s100computers.com/My%20System%20Pages/FPGA%20Z80%20SBC/FPGA%20Z80%20SBC.htm
+;
+;	WRITTEN BY: WAYNE WARTHEN -- 9/2/2024
+;======================================================================
+;
+; TRION VGA EXPOSES A FRAME BUFFER STARTING AT $E000.
+; PORT $08 CONTROLS ACCESS TO THE FRAME BUFFER.
+;   - WHEN $01, FRAME BUFFER APPEARS AT $E000 IN CPU ADDRESS SPACE
+;   - WHEN $00, FRAME BUFFER IS INACCESSIBLE BY CPU
+; PORT $C0: SET/GET CURSOR COL
+; PORT $C1: SET/GET CURSOR ROW
+; PORT $C2: CONTROLS VGA OUTPUT
+;  BIT 0: BLUE
+;  BIT 1: GREEN
+;  BIT 2: RED
+;  BIT 3: UNUSED?
+;  BIT 4: CURSOR MODE
+;  BIT 5: CURSOR BLINK
+;  BIT 6: CURSOR ENABLE
+;  BIT 7: VGA SIGNAL OUTPUT ENABLE
+; PORT $08: BUFFER SELECT, 1=SELECTED
+;
+; TODO:
+;
+;======================================================================
+; TRION VGA DRIVER - CONSTANTS
+;======================================================================
+;
+TVGA_FBUF		.EQU	$E000		; ADDRESS OF FRAME BUFFER
+TVGA_BASE		.EQU	$C0		; BASE I/O ADDRESS
+TVGA_CCOL		.EQU	TVGA_BASE+0	; CUR COL PORT
+TVGA_CROW		.EQU	TVGA_BASE+1	; CUR ROW PORT
+TVGA_CTL		.EQU	TVGA_BASE+2	; VGA CONTROL PORT
+;
+TVGA_BUFCTL	.EQU	$08
+;
+TVGA_KBDDATA	.EQU	$03		; KBD CTLR DATA PORT
+TVGA_KBDST	.EQU	$02		; KBD CTLR STATUS/CMD PORT
+;
+TVGA_ROWS	.EQU	40
+TVGA_COLS	.EQU	80
+;
+TERMENABLE	.SET	TRUE		; INCLUDE TERMINAL PSEUDODEVICE DRIVER
+KBDENABLE	.SET	TRUE		; INCLUDE KBD KEYBOARD SUPPORT
+;
+		DEVECHO	"TVGA: IO="
+		DEVECHO	TVGA_BASE
+		DEVECHO	", KBD MODE=T35"
+		DEVECHO	", KBD IO="
+		DEVECHO	TVGA_KBDDATA
+		DEVECHO	"\n"
+;
+;--------------------------------------------------------------------------------------------------
+;   HBIOS MODULE HEADER
+;--------------------------------------------------------------------------------------------------
+;
+ORG_TVGA	.EQU	$
+;
+	.DW	SIZ_TVGA		; MODULE SIZE
+	.DW	TVGA_INITPHASE		; ADR OF INIT PHASE HANDLER
+;
+TVGA_INITPHASE:
+	; INIT PHASE HANDLER, A=PHASE
+	;CP	HB_PHASE_PREINIT	; PREINIT PHASE?
+	;JP	Z,TVGA_PREINIT		; DO PREINIT
+	CP	HB_PHASE_INIT		; INIT PHASE?
+	JP	Z,TVGA_INIT		; DO INIT
+	RET				; DONE
+;
+;======================================================================
+; TRION VGA DRIVER - INITIALIZATION
+;======================================================================
+;
+TVGA_INIT:
+	LD	IY,TVGA_IDAT		; POINTER TO INSTANCE DATA
+;
+	OR	$FF			; CLEAR THE
+	LD	(TVGA_UNIT),A		; ... UNIT NUMBER
+;
+	CALL	NEWLINE			; FORMATTING
+	PRTS("TVGA: IO=0x$")
+	LD	A,TVGA_BASE
+	CALL	PRTHEXBYTE
+	CALL	TVGA_PROBE		; CHECK FOR HW PRESENCE
+	JR	Z,TVGA_INIT1		; CONTINUE IF HW PRESENT
+;
+	; HARDWARE NOT PRESENT
+	PRTS(" NOT PRESENT$")
+	OR	$FF			; SIGNAL FAILURE
+	RET
+;
+TVGA_INIT1:
+;;;	; RECORD DRIVER ACTIVE
+;;;	OR	$FF
+;;;	LD	(TVGA_ACTIVE),A
+	; DISPLAY CONSOLE DIMENSIONS
+	LD	A,TVGA_COLS
+	CALL	PC_SPACE
+	CALL	PRTDECB
+	LD	A,'X'
+	CALL	COUT
+	LD	A,TVGA_ROWS
+	CALL	PRTDECB
+	PRTS(" TEXT$")
+
+	; HARDWARE INITIALIZATION
+	CALL 	TVGA_CRTINIT		; SETUP THE TRION VGA REGISTERS
+	CALL	TVGA_VDAINI		; INITIALIZE
+	CALL	KBD_INIT		; INITIALIZE KEYBOARD DRIVER
+
+	; ADD OURSELVES TO VDA DISPATCH TABLE
+	LD	BC,TVGA_FNTBL		; BC := FUNCTION TABLE ADDRESS
+	LD	DE,TVGA_IDAT		; DE := TRION VGA INSTANCE DATA PTR
+	CALL	VDA_ADDENT		; ADD ENTRY, A := UNIT ASSIGNED
+
+	; INITIALIZE EMULATION
+	LD	C,A			; C := ASSIGNED VIDEO DEVICE NUM
+	LD	DE,TVGA_FNTBL		; DE := FUNCTION TABLE ADDRESS
+	LD	HL,TVGA_IDAT		; HL := TRION VGA INSTANCE DATA PTR
+	CALL	TERM_ATTACH		; DO IT
+	CP	$FF			; ERROR?
+	JR	NZ,TVGA_INIT2		; CONTINUE IF ALL GOOD
+	OR	A			; IF ERROR, SET FLAGS
+	RET				; AND RETURN
+
+TVGA_INIT2:
+	LD	(TVGA_UNIT),A		; RECORD OUR UNIT NUMBER
+	XOR	A			; SIGNAL SUCCESS
+	RET
+;
+;======================================================================
+; TRION VGA DRIVER - VIDEO DISPLAY ADAPTER (VDA) FUNCTIONS
+;======================================================================
+;
+TVGA_FNTBL:
+	.DW	TVGA_VDAINI
+	.DW	TVGA_VDAQRY
+	.DW	TVGA_VDARES
+	.DW	TVGA_VDADEV
+	.DW	TVGA_VDASCS
+	.DW	TVGA_VDASCP
+	.DW	TVGA_VDASAT
+	.DW	TVGA_VDASCO
+	.DW	TVGA_VDAWRC
+	.DW	TVGA_VDAFIL
+	.DW	TVGA_VDACPY
+	.DW	TVGA_VDASCR
+	.DW	TVGA_STAT
+	.DW	TVGA_FLUSH
+	.DW	TVGA_READ
+	.DW	TVGA_VDARDC
+#IF (($ - TVGA_FNTBL) != (VDA_FNCNT * 2))
+	.ECHO	"*** INVALID TVGA FUNCTION TABLE ***\n"
+	!!!!!
+#ENDIF
+
+TVGA_VDAINI:
+	; RESET VDA
+	CALL	TVGA_VDARES	; RESET VDA
+	LD	HL,0		; ZERO
+	LD	(TVGA_POS),HL	; ... TO POSITION
+	LD	A,' '		; BLANK THE SCREEN
+	LD	DE,TVGA_ROWS*TVGA_COLS	; FILL ENTIRE BUFFER
+	CALL	TVGA_FILL		; DO IT
+	LD	DE,0		; ROW = 0, COL = 0
+	CALL	TVGA_XY		; SEND CURSOR TO TOP LEFT
+	CALL	TVGA_SHOWCUR	; NOW SHOW THE CURSOR
+	XOR	A		; SIGNAL SUCCESS
+	RET
+
+TVGA_VDAQRY:
+	LD	C,$00		; MODE ZERO IS ALL WE KNOW
+	LD	D,TVGA_ROWS	; ROWS
+	LD	E,TVGA_COLS	; COLS
+	LD	HL,0		; EXTRACTION OF CURRENT BITMAP DATA NOT SUPPORTED
+	XOR	A		; SIGNAL SUCCESS
+	RET
+
+TVGA_VDARES:
+	CALL	 TVGA_CRTINIT
+	XOR	A		; SIGNAL SUCCESS
+	RET
+
+TVGA_VDADEV:
+	LD	D,VDADEV_TVGA	; D := DEVICE TYPE
+	LD	E,0		; E := PHYSICAL UNIT IS ALWAYS ZERO
+	LD	H,0		; H := 0, DRIVER HAS NO MODES
+	LD	L,TVGA_BASE	; L := BASE I/O ADDRESS
+	XOR	A		; SIGNAL SUCCESS
+	RET
+
+TVGA_VDASCS:
+	SYSCHKERR(ERR_NOTIMPL)	; NOT IMPLEMENTED (YET)
+	RET
+
+TVGA_VDASCP:
+	CALL	TVGA_XY		; SET CURSOR POSITION
+	XOR	A		; SIGNAL SUCCESS
+	RET
+
+TVGA_VDASAT:
+	; ATTRIBUTES NOT SUPPORTED BY HARDWARE
+	XOR	A
+	RET
+
+TVGA_VDASCO:
+	; CHARACTER COLOR NOT SUPPORT BY HARDWARE
+	XOR	A		; SIGNAL SUCCESS
+	RET			; DONE
+
+TVGA_VDAWRC:
+	LD	A,E		; CHARACTER TO WRITE GOES IN A
+	CALL	TVGA_PUTCHAR	; PUT IT ON THE SCREEN
+	XOR	A		; SIGNAL SUCCESS
+	RET
+
+TVGA_VDAFIL:
+	LD	A,E		; FILL CHARACTER GOES IN A
+	EX	DE,HL		; FILL LENGTH GOES IN DE
+	CALL	TVGA_FILL		; DO THE FILL
+	XOR	A		; SIGNAL SUCCESS
+	RET
+
+TVGA_VDACPY:
+	; LENGTH IN HL, SOURCE ROW/COL IN DE, DEST IS TVGA_POS
+	; BLKCPY USES: HL=SOURCE, DE=DEST, BC=COUNT
+	PUSH	HL		; SAVE LENGTH
+	CALL	TVGA_XY2IDX	; ROW/COL IN DE -> SOURCE ADR IN HL
+	POP	BC		; RECOVER LENGTH IN BC
+	LD	DE,(TVGA_POS)	; PUT DEST IN DE
+	JP	TVGA_BLKCPY	; DO A BLOCK COPY
+
+TVGA_VDASCR:
+	LD	A,E		; LOAD E INTO A
+	OR	A		; SET FLAGS
+	RET	Z		; IF ZERO, WE ARE DONE
+	PUSH	DE		; SAVE E
+	JP	M,TVGA_VDASCR1	; E IS NEGATIVE, REVERSE SCROLL
+	CALL	TVGA_SCROLL	; SCROLL FORWARD ONE LINE
+	POP	DE		; RECOVER E
+	DEC	E		; DECREMENT IT
+	JR	TVGA_VDASCR	; LOOP
+TVGA_VDASCR1:
+	CALL	TVGA_RSCROLL	; SCROLL REVERSE ONE LINE
+	POP	DE		; RECOVER E
+	INC	E		; INCREMENT IT
+	JR	TVGA_VDASCR	; LOOP
+
+TVGA_STAT:
+	IN	A,(TVGA_KBDST)		; GET STATUS
+	AND	$01			; ISOLATE DATA WAITING BIT
+	JP	Z,CIO_IDLE		; NO DATA, EXIT VIA IDLE PROCESS
+	RET
+
+TVGA_FLUSH:
+	XOR	A			; SIGNAL SUCCESS
+	RET
+
+TVGA_READ:
+	CALL	TVGA_STAT			; GET STATUS
+	JR	Z,TVGA_READ		; LOOP TILL DATA READY
+	IN	A,(TVGA_KBDDATA)		; GET BYTE
+	LD	E,A			; PUT IN E FOR RETURN
+	XOR	A			; SIGNAL SUCCESS
+	RET				; DONE
+
+;----------------------------------------------------------------------
+; READ VALUE AT CURRENT VDU BUFFER POSITION
+; RETURN E = CHARACTER, B = COLOUR, C = ATTRIBUTES
+;----------------------------------------------------------------------
+
+TVGA_VDARDC:
+	CALL	TVGA_GETCHAR	; GET THE CHARACTER AT CUR CUR POS
+	LD	E,A		; PUT IN E
+	LD	BC,0		; COLOR AND ATTR NOT SUPPORTED
+	XOR	A		; SIGNAL SUCCESS
+	RET
+;
+;======================================================================
+; TRION VGA DRIVER - PRIVATE DRIVER FUNCTIONS
+;======================================================================
+;
+;
+;----------------------------------------------------------------------
+; PROBE FOR TRION VGA HARDWARE
+;----------------------------------------------------------------------
+;
+; ON RETURN, ZF SET INDICATES HARDWARE FOUND
+;
+TVGA_PROBE:
+	XOR	A			; ASSUME H/W EXISTS
+	RET
+;
+;----------------------------------------------------------------------
+; CRTC DISPLAY CONTROLLER CHIP INITIALIZATION
+;----------------------------------------------------------------------
+;
+TVGA_CRTINIT:
+	LD	A,%11001111		; WHITE ON BLACK, CURSOR ON, ENABLE OUTPUT
+	OUT	(TVGA_CTL),A		; WRITE TO CONTROL PORT
+	XOR	A			; ZERO ACCUM
+	RET				; DONE
+;
+;----------------------------------------------------------------------
+; SET CURSOR POSITION TO ROW IN D AND COLUMN IN E
+;----------------------------------------------------------------------
+;
+TVGA_XY:
+	CALL	TVGA_HIDECUR		; HIDE THE CURSOR
+	PUSH	DE			; SAVE NEW POSITION FOR NOW
+	CALL	TVGA_XY2IDX		; CONVERT ROW/COL TO BUF IDX
+	LD	(TVGA_POS),HL		; SAVE THE RESULT (DISPLAY POSITION)
+	POP	DE			; RECOVER INCOMING ROW/COL
+	LD	A,D			; GET ROW
+	OUT	(TVGA_CROW),A		; SET ROW REGISTER
+	LD	A,E			; GET COL
+	INC	A			; 1..79,0 (WHY???)
+	CP	80			; COL 80?
+	JR	NZ, TVGA_XY1		; SKIP IF NOT
+	XOR	A			; ELSE MAKE IT ZERO!
+TVGA_XY1:
+	OUT	(TVGA_CCOL),A		; SET COL REGISTER
+	JP	TVGA_SHOWCUR		; SHOW THE CURSOR AND EXIT
+;
+;----------------------------------------------------------------------
+; CONVERT XY COORDINATES IN DE INTO LINEAR INDEX IN HL
+; D=ROW, E=COL
+;----------------------------------------------------------------------
+;
+TVGA_XY2IDX:
+	LD	A,E			; SAVE COLUMN NUMBER IN A
+	LD	H,D			; SET H TO ROW NUMBER
+	LD	E,TVGA_COLS		; SET E TO ROW LENGTH
+	CALL	MULT8			; MULTIPLY TO GET ROW OFFSET, H * E = HL, E=0, B=0
+	LD	E,A			; GET COLUMN BACK
+	ADD	HL,DE			; ADD IT IN
+	RET				; RETURN
+;
+;----------------------------------------------------------------------
+; SHOW OR HIDE CURSOR
+;----------------------------------------------------------------------
+;
+TVGA_SHOWCUR:
+	LD	A,%11001111		; CONTROL PORT VALUE
+	;;;LD	A,%11111111		; CONTROL PORT VALUE
+	OUT	(TVGA_CTL),A		; SET REGISTER
+	XOR	A			; SIGNAL SUCCESS
+	RET				; DONE
+;
+TVGA_HIDECUR:
+	LD	A,%11001111		; CONTROL PORT VALUE
+	;;;LD	A,%11111111		; CONTROL PORT VALUE
+	OUT	(TVGA_CTL),A		; SET REGISTER
+	XOR	A			; SIGNAL SUCCESS
+	RET				; DONE
+;
+;----------------------------------------------------------------------
+; (DE)SELECT FRAME BUFFER
+;----------------------------------------------------------------------
+;
+TVGA_BUFSEL:
+	PUSH	AF
+	LD	A,$01
+	OUT	(TVGA_BUFCTL),A
+	POP	AF
+	RET
+;
+TVGA_BUFDESEL:
+	PUSH	AF
+	XOR	A
+	OUT	(TVGA_BUFCTL),A
+	POP	AF
+	RET
+;
+;----------------------------------------------------------------------
+; WRITE VALUE IN A TO CURRENT VDU BUFFER POSITION, ADVANCE CURSOR
+;----------------------------------------------------------------------
+;
+TVGA_PUTCHAR:
+	; WRITE CHAR AT CURRENT CURSOR POSITION.
+	PUSH	AF			; SAVE INCOMING CHAR
+	CALL	TVGA_HIDECUR		; HIDE CURSOR
+	CALL	TVGA_BUFSEL		; SELECT FRAME BUFFER
+	POP	AF
+	LD	HL,(TVGA_POS)		; GET CUR BUF POSITION
+	LD	DE,TVGA_FBUF		; START OF FRAME BUF
+	ADD	HL,DE			; ADD IT IN
+	LD	(HL),A			; PUT THE CHAR
+;
+	; SET NEW POSITION
+	LD	HL,(TVGA_POS)		; GET POSITION
+	INC	HL			; BUMP POSITION
+	LD	(TVGA_POS),HL		; SAVE NEW POSITION
+;
+	; PUT CUROR IN PLACE
+	LD	DE,TVGA_COLS		; COLS PER LINE
+	CALL	DIV16			; BC=ROW, HL=COL
+	LD	D,C
+	LD	E,L
+	CALL	TVGA_XY
+	CALL	TVGA_BUFDESEL		; DESELECT FRAME BUFFER
+	JP	TVGA_SHOWCUR		; SHOW IT AND RETURN
+;
+;----------------------------------------------------------------------
+; GET CHAR VALUE TO A FROM CURRENT VDU BUFFER POSITION
+;----------------------------------------------------------------------
+;
+TVGA_GETCHAR:
+	XOR	A
+	RET
+;
+;----------------------------------------------------------------------
+; FILL AREA IN BUFFER WITH SPECIFIED CHARACTER AND CURRENT COLOR/ATTRIBUTE
+; STARTING AT THE CURRENT FRAME BUFFER POSITION
+;   A: FILL CHARACTER
+;   DE: NUMBER OF CHARACTERS TO FILL
+;----------------------------------------------------------------------
+;
+TVGA_FILL:
+	PUSH	AF			; SAVE INCOMING FILL CHAR
+	CALL	TVGA_HIDECUR		; HIDE CURSOR
+	CALL	TVGA_BUFSEL		; SELECT BUFFER
+	LD	HL,(TVGA_POS)		; CUR POS TO HL
+	LD	BC,TVGA_FBUF		; ADR OF FRAME
+	ADD	HL,BC			; ADD IT IN
+	POP	AF
+	LD	C,A			; FILL CHAR TO C
+TVGA_FILL1:
+	LD	A,D			; CHECK FILL
+	OR	E			; ... COUNTER
+	JR	Z,TVGA_FILL2		; DONE IF ZERO
+	LD	(HL),C			; FILL ONE CHAR
+	INC	HL			; BUMP BUF PTR
+	DEC	DE			; DEC FILL COUNTER
+	JR	TVGA_FILL1		; LOOP
+;
+TVGA_FILL2:
+	CALL	TVGA_BUFDESEL		; DESELECT BUFFER
+	JP	TVGA_SHOWCUR		; EXIT VIA SHOW CURSOR
+;
+;----------------------------------------------------------------------
+; SCROLL ENTIRE SCREEN FORWARD BY ONE LINE (CURSOR POSITION UNCHANGED)
+;----------------------------------------------------------------------
+;
+TVGA_SCROLL:
+	CALL	TVGA_BUFSEL				; SELECT FRAME BUFFER
+;
+	; COPY "UP" ONE LINE
+	LD	HL,TVGA_FBUF + TVGA_COLS 			; FROM SECOND LINE
+	LD	DE,TVGA_FBUF				; TO FIRST LINE
+	LD	BC,+(TVGA_ROWS - 1) * TVGA_COLS		; ALL BUT ONE LINE
+	LDIR						; DO IT
+;
+	; FILL LAST LINE OF SCREEN
+	LD	HL,TVGA_FBUF + ((TVGA_ROWS - 1) * TVGA_COLS)	; LAST LINE
+	LD	A,' '					; FILL CHAR
+	LD	(HL),A					; COPY 1 CHAR
+	LD	DE,TVGA_FBUF + ((TVGA_ROWS - 1) * TVGA_COLS) + 1	; SECOND POS IN LAST LINE
+	LD	BC,TVGA_COLS - 1				; COLS PER LINE - 1
+	LDIR						; FILL IT
+;
+	CALL	TVGA_BUFDESEL				; DESELECT FRAME BUFFER
+	RET						; DONE
+;
+;----------------------------------------------------------------------
+; REVERSE SCROLL ENTIRE SCREEN BY ONE LINE (CURSOR POSITION UNCHANGED)
+;----------------------------------------------------------------------
+;
+TVGA_RSCROLL:
+	CALL	TVGA_BUFSEL				; SELECT FRAME BUFFER
+;
+	; COPY "DOWN" ONE LINE
+	LD	HL,TVGA_FBUF + (TVGA_COLS * (TVGA_ROWS - 1)) - 1 	; FROM END OF SECOND TO LAST LINE
+	LD	DE,TVGA_FBUF + (TVGA_COLS * TVGA_ROWS) - 1	; TO END OF LAST LINE
+	LD	BC,+(TVGA_ROWS - 1) * TVGA_COLS		; ALL BUT ONE LINE
+	LDDR						; DO IT IN REVERSE
+;
+	; FILL FIRST LINE OF SCREEN
+	LD	HL,TVGA_FBUF				; FIRST LINE
+	LD	A,' '					; FILL CHAR
+	LD	(HL),A					; COPY 1 CHAR
+	LD	DE,TVGA_FBUF + 1				; SECOND POS IN FIRST LINE
+	LD	BC,TVGA_COLS - 1				; COLS PER LINE - 1
+	LDIR						; FILL IT
+;
+	CALL	TVGA_BUFDESEL				; DESELECT FRAME BUFFER
+	RET						; DONE
+;
+;----------------------------------------------------------------------
+; BLOCK COPY BC BYTES FROM HL TO DE
+;----------------------------------------------------------------------
+;
+TVGA_BLKCPY:
+
+	CALL	TVGA_BUFSEL				; SELECT FRAME BUFFER
+	PUSH	BC					; SAVE LENGTH
+	LD	BC,TVGA_FBUF				; FRAME BUFFER ADR
+	ADD	HL,BC					; ADD TO SOURCE
+	EX	DE,HL					; EXCHANGE
+	ADD	HL,BC					; ADD TO DEST
+	EX	DE,HL					; EXCHANGE
+	POP	BC					; RECOVER LENGTH
+	LDIR						; LDIR DOES THE COPY
+	CALL	TVGA_BUFDESEL				; DESELECT FRAME BUFFER
+	RET						; DONE
+;
+;==================================================================================================
+;   TRION VGA DRIVER - DATA
+;==================================================================================================
+;
+TVGA_POS		.DW 	0	; CURRENT DISPLAY POSITION
+;;;TVGA_ACTIVE	.DB	FALSE	; FLAG FOR DRIVER ACTIVE
+TVGA_UNIT		.DB	$FF	; ASSIGNED UNIT NUMBER
+;
+;==================================================================================================
+;   VGA DRIVER - INSTANCE DATA
+;==================================================================================================
+;
+TVGA_IDAT:
+	.DB	KBDMODE_T35	; S100 T35 KEYBOARD CONTROLLER
+	.DB	TVGA_KBDST
+	.DB	TVGA_KBDDATA
+;
+;--------------------------------------------------------------------------------------------------
+;   HBIOS MODULE TRAILER
+;--------------------------------------------------------------------------------------------------
+;
+END_TVGA	.EQU	$
+SIZ_TVGA	.EQU	END_TVGA - ORG_TVGA
+;	
+	MEMECHO	"TVGA occupies "
+	MEMECHO	SIZ_TVGA
+	MEMECHO	" bytes.\n"

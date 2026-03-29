@@ -1,0 +1,6 @@
+@Label="Microsoft COBOL"
+@SysImage="../ZSDOS/zsys_wbw.sys"
+#
+# Add the ReadMe document
+#
+d_cobol/ReadMe.txt 0:

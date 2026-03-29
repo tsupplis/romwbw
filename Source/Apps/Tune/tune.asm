@@ -53,6 +53,10 @@
 ;   2024-07-11 [WBW] Updated, Les Bird's module now uses same settings as EB6
 ;   2024-09-17 [WBW] Add support for HEATH H8 with Les Bird's MSX Card
 ;   2024-12-12 [WBW] Add options to force standard MSX or RC ports
+;   2025-05-28 [WBW] Add option to force delay mode
+;   2026-01-24 [WBW] Support RC2014 platform id
+;   2026-01-31 [WBW] Update MUTE funtion to zero all PSG registers
+;   2026-02-03 [JMD] Add Coleco (50H/51H/52H) auto-detect 
 ;_______________________________________________________________________________
 ;
 ; ToDo:
@@ -77,6 +81,7 @@ TYPMYM		.EQU	3		; FILTYP value for MYM sound file
 PORTS_AUTO	.EQU	0		; AUTO select audio chip ports
 PORTS_MSX	.EQU	1		; force MSX audio chip ports
 PORTS_RC	.EQU	2		; force RCBUS audio chip ports
+PORTS_COLECO	.EQU	3		; force Coleco-style ports (50H/51H)
 ;
 ; HIGH SPEED CPU CONTROL
 ;
@@ -113,6 +118,7 @@ Id		.EQU	1	; 5) Insert official identificator
 	CALL	CLI_ABRT_IF_OPT_FIRST
 	CALL	CLI_PORTS
 	CALL	CLI_HAVE_HBIOS_SWITCH
+	CALL	CLI_HAVE_DELAY_SWITCH
 	CALL	CLI_OCTAVE_ADJST
 	JP	CONTINUE
 
@@ -129,14 +135,17 @@ CONTINUE:
 
 	LD	A, (HBIOSMD)
 	OR	A
-	JR	NZ, TSTTIMER		; skip hardware check if using hbios
+	JP	NZ, TSTTIMER		; skip hardware check if using hbios
 
 	LD	A, (USEPORTS)		; get ports option
 	LD	HL,MSXPORTS		; assume MSX
 	CP	PORTS_MSX		; use MSX?
 	JR	Z,FORCE
-	LD	HL,RCPORTS		; asssume RC
+	LD	HL,RCPORTS		; assume RC
 	CP	PORTS_RC		; use RC?
+	JR	Z,FORCE
+	LD	HL,COLECOPORTS		; assume Coleco ports
+	CP	PORTS_COLECO		; use Coleco?
 	JR	Z,FORCE
 	JR	AUTOSEL			; otherwise do auto select
 
@@ -444,7 +453,7 @@ IDBIO:
 ;
 IDBIO1:
 	; Check for RomWBW (HBIOS)
-	LD	HL,($FFFE)	; HL := HBIOS ident location
+	LD	HL,($FFFC)	; HL := HBIOS ident location
 	LD	A,'W'		; First byte of ident
 	CP	(HL)		; Compare
 	JR	NZ,IDBIO2	; Not HBIOS
@@ -606,6 +615,9 @@ CFGSIZ	.EQU	$ - CFGTBL
 	.DB	$07,	$33,	$32,	$32,	$FF,	$FF,	$FF	; RCZ80 W/ LINC SOUND MODULE
 	.DW	HWSTR_LINC
 ;
+	.DB	$07,	$50,	$51,	$52,	$FF,	$FF,	$FF	; RCZ80 W/ RC SOUND MODULE (COLECO)
+	.DW	HWSTR_COLECO
+;
 	.DB	$08,	$68,	$60,	$68,	$C0,	$FF,	$FF	; RCZ180 W/ RC SOUND MODULE (EB)
 	.DW	HWSTR_RCEB
 ;
@@ -617,6 +629,9 @@ CFGSIZ	.EQU	$ - CFGTBL
 ;
 	.DB	$08,	$33,	$32,	$32,	$C0,	$FF,	$FF	; RCZ180 W/ LINC SOUND MODULE
 	.DW	HWSTR_LINC
+;
+	.DB	$08,	$50,	$51,	$52,	$FF,	$FF,	$FF	; RCZ180 W/ RC SOUND MODULE (COLECO)
+	.DW	HWSTR_COLECO
 ;
 	.DB	$09,	$D8,	$D0,	$D8,	$FF,	$FF,	$FF	; EZZ80 W/ RC SOUND MODULE (EB)
 	.DW	HWSTR_RCEB
@@ -630,6 +645,9 @@ CFGSIZ	.EQU	$ - CFGTBL
 	.DB	$09,	$33,	$32,	$32,	$FF,	$FF,	$FF	; EZZ80 W/ LINC SOUND MODULE
 	.DW	HWSTR_LINC
 ;
+	.DB	$09,	$50,	$51,	$52,	$FF,	$FF,	$FF	; EZZ80 W/ RC SOUND MODULE (COLECO)
+	.DW	HWSTR_COLECO
+;
 	.DB	$0A,	$68,	$60,	$68,	$C0,	$FF,	$FF	; SCZ180 W/ RC SOUND MODULE (EB)
 	.DW	HWSTR_RCEB
 ;
@@ -641,6 +659,9 @@ CFGSIZ	.EQU	$ - CFGTBL
 ;
 	.DB	$0A,	$33,	$32,	$32,	$C0,	$FF,	$FF	; SCZ180 W/ LINC SOUND MODULE
 	.DW	HWSTR_LINC
+;
+	.DB	$0A,	$50,	$51,	$52,	$FF,	$FF,	$FF	; SCZ80 W/ RC SOUND MODULE (COLECO)
+	.DW	HWSTR_COLECO
 ;
 	.DB	$0B,	$D8,	$D0,	$D8,	$FF,	$FF,	$FF	; RCZ280 W/ RC SOUND MODULE (EB)
 	.DW	HWSTR_RCEB
@@ -654,6 +675,9 @@ CFGSIZ	.EQU	$ - CFGTBL
 	.DB	$0B,	$33,	$32,	$32,	$FF,	$FF,	$FF	; RCZ280 W/ LINC SOUND MODULE
 	.DW	HWSTR_LINC
 ;
+	.DB	$0B,	$50,	$51,	$52,	$FF,	$FF,	$FF	; RCZ280 W/ RC SOUND MODULE (COLECO)
+	.DW	HWSTR_COLECO
+;
 	.DB	13,	$A0,	$A1,	$A0,	$FF,	$A2,	$FE	; MBC
 	.DW	HWSTR_MBC
 ;
@@ -665,6 +689,18 @@ CFGSIZ	.EQU	$ - CFGTBL
 ;
 	.DB	22,	$41,	$40,	$40,	$FF,	$FF,	$FF	; NABU
 	.DW	HWSTR_NABU
+;
+	.DB	27,	$D8,	$D0,	$D8,	$FF,	$FF,	$FF	; RC2014 W/ RC SOUND MODULE (EB)
+	.DW	HWSTR_RCEB
+;
+	.DB	27,	$A0,	$A1,	$A2,	$FF,	$FF,	$FF	; RC2014 W/ RC SOUND MODULE (MSX)
+	.DW	HWSTR_RCMSX
+;
+	.DB	27,	$D1,	$D0,	$D0,	$FF,	$FF,	$FF	; RC2014 W/ RC SOUND MODULE (MF)
+	.DW	HWSTR_RCMF
+;
+	.DB	27,	$50,	$51,	$52,	$FF,	$FF,	$FF	; RC2014 W/ RC SOUND MODULE (COLECO)
+	.DW	HWSTR_COLECO
 ;
 	.DB	$FF					; END OF TABLE MARKER
 ;
@@ -678,6 +714,10 @@ MSXPORTS:
 RCPORTS:
 	.DB	$FF,	$D8,	$D0,	$FF,	$FF,	$FF,	$FF	; GENERIC RC
 	.DW	HWSTR_RC
+;
+COLECOPORTS:
+	.DB	$FF,	$50,	$51,	$52,	$FF,	$FF,	$FF	; GENERIC COLECO AY PORTS (50H/51H, READ AT 52H)
+	.DW	HWSTR_COLECO
 ;
 CFG:		; ACTIVE CONFIG VALUES (FROM SELECTED CFGTBL ENTRY)
 PLT		.DB	0	; RomWBW HBIOS platform id
@@ -703,15 +743,16 @@ FILTYP		.DB	0	; Sound file type (TYPPT2, TYPPT3, TYPMYM)
 TMP		.DB	0	; work around use of undocumented Z80
 
 HBIOSMD		.DB	0	; NON-ZERO IF USING HBIOS SOUND DRIVER, ZERO OTHERWISE
+DELAYMD		.DB	0	; FORCE DELAY MODE IF TRUE (NON-ZERO)
 OCTAVEADJ	.DB	0	; AMOUNT TO ADJUST OCTAVE UP OR DOWN
 
 USEPORTS	.DB	0	; AUDIO CHIP PORT SELECTION MODE
 
-MSGBAN		.DB	"Tune Player for RomWBW v3.12, 12-Dec-2024",0
-MSGUSE		.DB	"Copyright (C) 2024, Wayne Warthen, GNU GPL v3",13,10
+MSGBAN		.DB	"Tune Player for RomWBW v3.16, 5-fEB-2026",0
+MSGUSE		.DB	"Copyright (C) 2026, Wayne Warthen, GNU GPL v3",13,10
 		.DB	"PTxPlayer Copyright (C) 2004-2007 S.V.Bulba",13,10
 		.DB	"MYMPlay by Marq/Lieves!Tuore",13,10,13,10
-		.DB	"Usage: TUNE <filename>.[PT2|PT3|MYM] [-msx|-rc] [--hbios] [+tn|-tn]",0
+		.DB	"Usage: TUNE <filename>.[PT2|PT3|MYM] [-msx|-rc|-coleco] [-delay] [--hbios] [+tn|-tn]",0
 MSGBIO		.DB	"Incompatible BIOS or version, "
 		.DB	"HBIOS v", '0' + RMJ, ".", '0' + RMN, " required",0
 MSGPLT		.DB	"Hardware error, system not supported!",0
@@ -737,6 +778,7 @@ HWSTR_NABU	.DB	"NABU Onboard Sound",0
 HWSTR_HEATH	.DB	"HEATH H8 MSX Module",0
 HWSTR_MSX	.DB	"MSX Standard Ports (A0H/A1H)",0
 HWSTR_RC	.DB	"RCBus Standard Ports (D8H/D0H)",0
+HWSTR_COLECO	.DB	"RCBus Coleco Ports (50H/51H)",0
 
 MSGUNSUP	.db	"MYM files not supported with HBIOS yet!\r\n", 0
 
@@ -888,10 +930,16 @@ MUTE	ISHBIOS
 	JR	NZ,MUTEVIAHBIOS
 
 	XOR A
-	LD H,A
-	LD L,A
-	LD (AYREGS+AmplA),A
-	LD (AYREGS+AmplB),HL
+	LD B,14
+	LD HL,AYREGS
+MUTE1	LD (HL),A
+	INC HL
+	DJNZ MUTE1
+	;XOR A
+	;LD H,A
+	;LD L,A
+	;LD (AYREGS+AmplA),A
+	;LD (AYREGS+AmplB),HL
 	JP ROUT
 
 MUTEVIAHBIOS:

@@ -2,12 +2,12 @@
 # order is actually important, because of build dependencies
 #
 
-.PHONY: doc prop shared bp images rom zrc z1rcc zzrcc zrc512 fz80 ez512
+.PHONY: doc prop shared bp images rom zrc z1rcc zzrcc zrc512 sz80 ez512 msx
 
 .ONESHELL:
 .SHELLFLAGS = -ce
 
-all: prop shared bp images rom zrc z1rcc zzrcc zrc512 fz80 ez512
+all: prop shared bp images rom zrc z1rcc zzrcc zrc512 sz80 ez512 msx
 
 doc:
 	$(MAKE) --directory Doc $(ACTION)
@@ -23,8 +23,10 @@ shared:
 	$(MAKE) --directory ZCPR $(ACTION)
 	$(MAKE) --directory ZCPR-DJ $(ACTION)
 	$(MAKE) --directory ZSDOS $(ACTION)
+	$(MAKE) --directory ZSDOS2 $(ACTION)
 	$(MAKE) --directory CPM3 $(ACTION)
 	$(MAKE) --directory ZPM3 $(ACTION)
+	$(MAKE) --directory BPBIOS $(ACTION)
 	$(MAKE) --directory CPNET $(ACTION)
 	$(MAKE) --directory pSys $(ACTION)
 	$(MAKE) --directory Apps $(ACTION)
@@ -32,9 +34,6 @@ shared:
 	$(MAKE) --directory TastyBasic $(ACTION)
 	$(MAKE) --directory Fonts $(ACTION)
 	$(MAKE) --directory RomDsk $(ACTION)
-
-bp:
-	$(MAKE) --directory BPBIOS $(ACTION)
 
 images:
 	$(MAKE) --directory Images $(ACTION)
@@ -54,11 +53,15 @@ zzrcc:
 zrc512:
 	$(MAKE) --directory ZRC512 $(ACTION)
 
-fz80:
-	$(MAKE) --directory FZ80 $(ACTION)
+sz80:
+	$(MAKE) --directory SZ80 $(ACTION)
 
 ez512:
 	$(MAKE) --directory EZ512 $(ACTION)
+
+msx:
+	$(MAKE) --directory MSX $(ACTION)
+
 
 clean: ACTION=clean
 clean: all

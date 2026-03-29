@@ -47,12 +47,20 @@ AY_RIN		.EQU	AY_RSEL
 AY_ACR		.EQU	N8_ACR
 		DEVECHO	"N8"
 #ENDIF
+
+#IF (AYMODE == AYMODE_N8PC)
+AY_RSEL		.EQU	$A0
+AY_RDAT		.EQU	$A1
+AY_RIN		.EQU	AY_RSEL
+AY_ACR		.EQU	N8_ACR
+		DEVECHO	"N8PC"
+#ENDIF
 ;
-#IF (AYMODE == AYMODE_RCZ80)
+#IF (AYMODE == AYMODE_RC2014)
 AY_RSEL		.EQU	$D8
 AY_RDAT		.EQU	$D0
 AY_RIN		.EQU	AY_RSEL+AY_RCSND
-		DEVECHO	"RCZ80"
+		DEVECHO	"RC2014"
 #ENDIF
 ;
 #IF (AYMODE == AYMODE_RCZ180)
@@ -67,6 +75,13 @@ AY_RSEL		.EQU	$A0
 AY_RDAT		.EQU	$A1
 AY_RIN		.EQU	$A2
 		DEVECHO	"MSX"
+#ENDIF
+;
+#IF (AYMODE == AYMODE_COLECO)
+AY_RSEL		.EQU	$50
+AY_RDAT		.EQU	$51
+AY_RIN		.EQU	AY_RDAT
+		DEVECHO	"COLECO"
 #ENDIF
 ;
 #IF (AYMODE == AYMODE_LINC)
@@ -113,6 +128,23 @@ AY_R2CHBP	.EQU	$02
 AY_R3CHBP	.EQU	$03
 AY_R7ENAB	.EQU	$07
 AY_R8AVOL	.EQU	$08
+;
+;--------------------------------------------------------------------------------------------------
+;   HBIOS MODULE HEADER
+;--------------------------------------------------------------------------------------------------
+;
+ORG_AY	.EQU	$
+;
+	.DW	SIZ_AY			; MODULE SIZE
+	.DW	AY_INITPHASE		; ADR OF INIT PHASE HANDLER
+;
+AY_INITPHASE:
+	; INIT PHASE HANDLER, A=PHASE
+	;CP	HB_PHASE_PREINIT	; PREINIT PHASE?
+	;JP	Z,AY38910_PREINIT	; DO PREINIT
+	CP	HB_PHASE_INIT		; INIT PHASE?
+	JP	Z,AY38910_INIT		; DO INIT
+	RET				; DONE
 ;
 ;======================================================================
 ;
@@ -171,8 +203,12 @@ AY38910_INIT:
 	PRTS(" MODE=N8$")
 #ENDIF
 ;
-#IF (AYMODE == AYMODE_RCZ80)
-	PRTS(" MODE=RCZ80$")
+#IF (AYMODE == AYMODE_N8PC)
+	PRTS(" MODE=N8PC$")
+#ENDIF
+;
+#IF (AYMODE == AYMODE_RC2014)
+	PRTS(" MODE=RC2014$")
 #ENDIF
 ;
 #IF (AYMODE == AYMODE_RCZ180)
@@ -181,6 +217,10 @@ AY38910_INIT:
 ;
 #IF (AYMODE == AYMODE_MSX)
 	PRTS(" MODE=MSX$")
+#ENDIF
+;
+#IF (AYMODE == AYMODE_COLECO)
+	PRTS(" MODE=COLECO$")
 #ENDIF
 ;
 #IF (AYMODE == AYMODE_MBC)
@@ -199,7 +239,7 @@ AY38910_INIT:
 	LD	A,AY_RSEL
 	CALL	PRTHEXBYTE
 ;
-#IF ((AYMODE == AYMODE_SCG) | (AYMODE == AYMODE_N8) | (AYMODE == AYMODE_MBC))
+#IF ((AYMODE == AYMODE_SCG) | (AYMODE == AYMODE_N8) | (AYMODE == AYMODE_MBC) | (AYMODE == AYMODE_N8PC))
 	LD	A,$FF			; ACTIVATE DEVICE BIT 4 IS AY RESET CONTROL, BIT 3 IS ACTIVE LED
 	OUT	(AY_ACR),A		; SET INIT AUX CONTROL REG
 #ENDIF
@@ -556,10 +596,10 @@ AYT_REGWR		.DB	"\r\nOUT AY-3-8910 $"
 #ENDIF
 ;
 ;======================================================================
-;	QUARTER TONE FREQUENCY TABLE
+;	EIGHTH TONE FREQUENCY TABLE
 ;======================================================================
 ;
-; THE FOLLOWING TABLE MAPS A FULL OCTAVE OF QUARTER-NOTES
+; THE FOLLOWING TABLE MAPS A FULL OCTAVE OF EIGHTH-TONES
 ; STARTING AT A# IN OCTAVE 0 TO THE CORRESPONDING PERIOD
 ; VALUE TO USE ON THE PSG TO ACHIEVE THE DESIRED NOTE FREQUENCY.
 ;
@@ -635,3 +675,14 @@ AY3NOTETBL:
 	.DW	AY_RATIO / 5579		;
 	.DW	AY_RATIO / 5661		;
 	.DW	AY_RATIO / 5743		;
+;
+;--------------------------------------------------------------------------------------------------
+;   HBIOS MODULE TRAILER
+;--------------------------------------------------------------------------------------------------
+;
+END_AY	.EQU	$
+SIZ_AY	.EQU	END_AY - ORG_AY
+;	
+	MEMECHO	"AY occupies "
+	MEMECHO	SIZ_AY
+	MEMECHO	" bytes.\n"

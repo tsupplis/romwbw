@@ -38,6 +38,9 @@
 ;   2024-12-17 [MAP] Added new /B=opt feaure to assign drives
 ;   2024-12-21 [MAP] Added CBIOS heap estimation to /B to prevent
 ;                    overflow when the drives are finally added
+;   2025-07-19 [D?N] Support for native USB drivers
+;   2025-08-09 [WBW] Support for ESPSD driver
+;   2025-11-10 [WBW] Support for SCSI driver
 ;_______________________________________________________________________________
 ;
 ; ToDo:
@@ -188,7 +191,7 @@ init:
 	ldir			; do the copy
 ;
 	; determine end of CBIOS (assume HBIOS for now)
-	ld	hl,($FFFE)	; get proxy start address
+	ld	hl,($FFFC)	; get proxy start address
 	ld	(bioend),hl	; save as CBIOS end address
 ;
 	; check for UNA (UBIOS)
@@ -1179,8 +1182,9 @@ makdphwbw:	; determine appropriate dpb (WBW mode, unit number in A)
 	jr	makdph0		; jump ahead
 makdph00:
 	ld	e,MID_FD144	; assume floppy
-	cp	DIODEV_FD	; floppy?
-	jr	z,makdph0	; yes, jump ahead
+	;cp	DIODEV_FD	; floppy?
+	bit	7,c		; floppy?
+	jr	nz,makdph0	; yes, jump ahead
 	ld	e,MID_RF	; assume ram floppy
 	cp	DIODEV_RF	; ram floppy?
 	jr	z,makdph0	; yes, jump ahead
@@ -1560,7 +1564,7 @@ drvmap:
 	jr	nz,drvmapu	; do UNA mode drvmap
 ;
 		; determine device code by scanning for string
-	ld	b,16		; device table always has 16 entries
+	ld	b,devcnt	; number of entries in devtbl
 	ld	c,0		; c is used to track table entry num
 	ld	de,tmpstr	; de points to specified device name
 	ld	hl,devtbl	; hl points to first entry of devtbl
@@ -1826,7 +1830,7 @@ prtdev:
 	rst	08		; call hbios, D := device, E := unit
 	push	de		; save results
 	ld	a,d		; device to A
-	and	$0F		; mask out undesired bits
+	and	$1F		; mask out undesired bits
 	push	hl		; save HL
 	add	a,a		; multiple A by two for word table
 	ld	hl,devtbl	; point to start of device name table
@@ -2427,6 +2431,7 @@ devtbl:				; device table
 	.dw	dev04, dev05, dev06, dev07
 	.dw	dev08, dev09, dev10, dev11
 	.dw	dev12, dev13, dev14, dev15
+	.dw	dev16, dev17, dev18
 ;
 devunk	.db	"?",0
 dev00	.db	"MD",0
@@ -2444,9 +2449,12 @@ dev11	.db	"IMM",0
 dev12	.db	"SYQ",0
 dev13	.db	"CHUSB",0
 dev14	.db	"CHSD",0
-dev15	.equ	devunk
+dev15	.db	"USB",0
+dev16	.db	"ESPSD",0
+dev17	.db	"SCSI",0
+dev18	.equ	devunk
 ;
-devcnt	.equ	10		; 10 devices defined
+devcnt	.equ	19		; 19 device types defined
 ;
 udevram		.db	"RAM",0
 udevrom		.db	"ROM",0
@@ -2464,13 +2472,13 @@ stack	.equ	$		; stack top
 ; Messages
 ;
 indent	.db	"   ",0
-msgban1	.db	"ASSIGN v2.0 for RomWBW CP/M ",0
+msgban1	.db	"ASSIGN v2.3 for RomWBW CP/M ",0
 msg22	.db	"2.2",0
 msg3	.db	"3",0
-msbban2	.db	", 21-Dec-2024",0
+msbban2	.db	",10-Dec-2025",0
 msghb	.db	" (HBIOS Mode)",0
 msgub	.db	" (UBIOS Mode)",0
-msgban3	.db	"Copyright 2024, Wayne Warthen, GNU GPL v3",0
+msgban3	.db	"Copyright 2025, Wayne Warthen, GNU GPL v3",0
 msguse	.db	"Usage: ASSIGN D:[=[{D:|<device>[<unitnum>]:[<slicenum>]}]][,...]",13,10
 	.db	"  ex. ASSIGN           (display all active assignments)",13,10
 	.db	"      ASSIGN /?        (display version and usage)",13,10

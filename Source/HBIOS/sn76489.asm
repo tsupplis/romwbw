@@ -34,7 +34,7 @@ SN76489_PORT_RIGHT	.EQU	$FB	; PORTS FOR ACCESSING THE SN76489 CHIP (RIGHT)
 #IF (SNMODE == SNMODE_DUO)
 SN76489_PORT_LEFT	.EQU	$BE	; PORTS FOR ACCESSING THE SN76489 CHIP (LEFT)
 SN76489_PORT_RIGHT	.EQU	$BF	; PORTS FOR ACCESSING THE SN76489 CHIP (RIGHT)
-	DEVECHO	"RC"
+	DEVECHO	"DUO"
 #ENDIF
 ;
 	DEVECHO	", IO_LEFT="
@@ -49,6 +49,23 @@ SN7_IDAT		.EQU	0
 SN7_TONECNT		.EQU	3	; COUNT NUMBER OF TONE CHANNELS
 SN7_NOISECNT		.EQU	1	; COUNT NUMBER OF NOISE CHANNELS
 SN7_CHCNT		.EQU	SN7_TONECNT + SN7_NOISECNT
+;
+;--------------------------------------------------------------------------------------------------
+;   HBIOS MODULE HEADER
+;--------------------------------------------------------------------------------------------------
+;
+ORG_SN7	.EQU	$
+;
+	.DW	SIZ_SN7			; MODULE SIZE
+	.DW	SN7_INITPHASE		; ADR OF INIT PHASE HANDLER
+;
+SN7_INITPHASE:
+	; INIT PHASE HANDLER, A=PHASE
+	CP	HB_PHASE_PREINIT	; PREINIT PHASE?
+	JP	Z,SN76489_PREINIT	; DO PREINIT
+	CP	HB_PHASE_INIT		; INIT PHASE?
+	JP	Z,SN76489_INIT		; DO INIT
+	RET				; DONE
 ;
 #INCLUDE "audio.inc"
 ;
@@ -452,10 +469,10 @@ SNT_REGWR		.DB	"\r\nOUT SN76489, $"
 #ENDIF
 ;
 ;======================================================================
-;	QUARTER TONE FREQUENCY TABLE
+;	EIGHTH TONE FREQUENCY TABLE
 ;======================================================================
 ;
-; THE FOLLOWING TABLE MAPS A FULL OCTAVE OF QUARTER-NOTES
+; THE FOLLOWING TABLE MAPS A FULL OCTAVE OF EIGHTH-TONES
 ; STARTING AT A# IN OCTAVE 0 TO THE CORRESPONDING PERIOD
 ; VALUE TO USE ON THE PSG TO ACHIEVE THE DESIRED NOTE FREQUENCY.
 ;
@@ -531,3 +548,14 @@ SN7NOTETBL:
 	.DW	SN7RATIO / 5579         ; 
 	.DW	SN7RATIO / 5661         ; 
 	.DW	SN7RATIO / 5743         ; 
+;
+;--------------------------------------------------------------------------------------------------
+;   HBIOS MODULE TRAILER
+;--------------------------------------------------------------------------------------------------
+;
+END_SN7	.EQU	$
+SIZ_SN7	.EQU	END_SN7 - ORG_SN7
+;	
+	MEMECHO	"SN7 occupies "
+	MEMECHO	SIZ_SN7
+	MEMECHO	" bytes.\n"

@@ -57,6 +57,24 @@ ACIA_ACIA       .EQU    1
 ACIA_RTSON      .EQU    %10111111       ; BIT MASK TO ASSERT RTS
 ACIA_RTSOFF     .EQU    %01000000       ; BIT MASK TO DEASSERT RTS
 ;
+;--------------------------------------------------------------------------------------------------
+;   HBIOS MODULE HEADER
+;--------------------------------------------------------------------------------------------------
+;
+ORG_ACIA	.EQU	$
+;
+	.DW	SIZ_ACIA		; MODULE SIZE
+	.DW	ACIA_INITPHASE		; ADR OF INIT PHASE HANDLER
+;
+ACIA_INITPHASE:
+	; INIT PHASE HANDLER, A=PHASE
+	CP	HB_PHASE_PREINIT	; PREINIT PHASE?
+	JP	Z,ACIA_PREINIT		; DO PREINIT
+	CP	HB_PHASE_INIT		; INIT PHASE?
+	JP	Z,ACIA_INIT		; DO INIT
+	RET				; DONE
+
+;
 ;
 ;
 ACIA_PREINIT:
@@ -123,10 +141,8 @@ ACIA_INITUNIT:
         CALL    ACIA_INITSAFE
 ;
         ; SET DEFAULT CONFIG
-        LD      DE,-1                   ; LEAVE CONFIG ALONE
-        ; CALL INITDEV TO IMPLEMENT CONFIG, BUT NOTE THAT WE CALL
-        ; THE INITDEV ENTRY POINT THAT DOES NOT ENABLE/DISABLE INTS!
-        JP      ACIA_INITDEVX           ; IMPLEMENT IT AND RETURN
+        LD      DE,-1			; LEAVE CONFIG ALONE
+        JP      ACIA_INITDEV		; IMPLEMENT IT AND RETURN
 ;
 ;
 ;
@@ -366,15 +382,22 @@ ACIA_OST:
 ;
 ;
 ACIA_INITDEV:
+	; INITDEV CAN BE CALLED PRIOR TO INTERRUPTS BEING ENABLED.  WE
+	; NEED TO LEAVE INTERRUPTS ALONE IN THIS SCENARIO
+	LD	A,(INTSENAB)		; INTS ENABLED?
+	OR	A			; TEST VALUE
+	JR	Z,ACIA_INITDEV0		; BYPASS DI/EI IF NOT ENABLED
+;
+	; INTERRUPTS DISABLED DURING INIT
         HB_DI                           ; AVOID CONFLICTS
-        CALL    ACIA_INITDEVX           ; DO THE REAL WORK
+        CALL    ACIA_INITDEV0           ; DO THE REAL WORK
         HB_EI                           ; INTS BACK ON
         RET                             ; DONE
 ;
 ; THIS ENTRY POINT BYPASSES DISABLING/ENABLING INTS WHICH IS REQUIRED BY
 ; PREINIT ABOVE.  PREINIT IS NOT ALLOWED TO ENABLE INTS!
 ;
-ACIA_INITDEVX:
+ACIA_INITDEV0:
 ;
 #IF (ACIADEBUG)
         CALL    NEWLINE
@@ -738,3 +761,14 @@ ACIA1_CFG:
 #ENDIF
 ;
 ACIA_CFGCNT     .EQU    ($ - ACIA_CFG) / ACIA_CFGSIZ
+;
+;--------------------------------------------------------------------------------------------------
+;   HBIOS MODULE TRAILER
+;--------------------------------------------------------------------------------------------------
+;
+END_ACIA	.EQU	$
+SIZ_ACIA	.EQU	END_ACIA - ORG_ACIA
+;	
+	MEMECHO	"ACIA occupies "
+	MEMECHO	SIZ_ACIA
+	MEMECHO	" bytes.\n"
